@@ -113,3 +113,13 @@ terminus drush $PANTHEON_SITE_NAME.dev -- uli
 ## Updating your site
 
 When using this repository to manage your Drupal site, you will no longer use the Pantheon dashboard to update your Drupal version. Instead, you will manage your updates using Composer. Ensure your site is in Git mode, clone it locally, and then run composer commands from there.  Commit and push your files back up to Pantheon as usual.
+
+
+### References
+
+ - Thanks to Pantheon for detailed documentation. I adapted these
+   instructions from the link below.  [Drupal 8 and Composer on Pantheon
+   Without Continuous
+   Integration](https://pantheon.io/docs/guides/drupal-8-composer-no-ci)
+ - Composer.json file is created from [Apigee Developer portal Kickstart
+   Repo](https://github.com/apigee/devportal-kickstart-project-composer)
