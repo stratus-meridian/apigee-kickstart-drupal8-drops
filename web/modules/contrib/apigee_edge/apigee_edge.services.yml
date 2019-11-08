@@ -1,0 +1,206 @@
+services:
+  logger.channel.apigee_edge:
+    parent: logger.channel_base
+    arguments: ['apigee_edge']
+
+  cache.apigee_edge_entity:
+    class: Drupal\Core\Cache\CacheBackendInterface
+    tags:
+      - { name: cache.bin }
+    factory: cache_factory:get
+    arguments: [apigee_edge_entity]
+
+  apigee_edge.cli:
+    class: Drupal\apigee_edge\CliService
+
+  apigee_edge.sdk_connector:
+    class: Drupal\apigee_edge\SDKConnector
+    arguments: ['@http_client_factory', '@key.repository', '@entity_type.manager', '@config.factory', '@module_handler', '@info_parser']
+
+  apigee_edge.key_entity_form_enhancer:
+    class: Drupal\apigee_edge\KeyEntityFormEnhancer
+    arguments: ['@apigee_edge.sdk_connector', '@apigee_edge.authentication.oauth_token_storage', '@entity_type.manager', '@config.factory', '@email.validator']
+    calls:
+      - [setMessenger, ['@messenger']]
+      - [setStringTranslation, ['@string_translation']]
+
+  apigee_edge.controller.organization:
+    class: Drupal\apigee_edge\Entity\Controller\OrganizationController
+    arguments: ['@apigee_edge.sdk_connector']
+
+  apigee_edge.controller.developer:
+    class: Drupal\apigee_edge\Entity\Controller\DeveloperController
+    arguments: ['@apigee_edge.sdk_connector', '@apigee_edge.controller.organization', '@apigee_edge.controller.cache.developer', '@apigee_edge.controller.cache.developer_ids', '@apigee_edge.entity.controller.cache.developer_app_cache_factory', '@apigee_edge.entity.controller.cache.developer_app_name_cache_factory']
+
+  apigee_edge.controller.api_product:
+    class: Drupal\apigee_edge\Entity\Controller\ApiProductController
+    arguments: ['@apigee_edge.sdk_connector', '@apigee_edge.controller.organization', '@apigee_edge.controller.cache.api_product', '@apigee_edge.controller.cache.api_product_ids']
+
+  apigee_edge.controller.app:
+    class: Drupal\apigee_edge\Entity\Controller\AppController
+    arguments: ['@apigee_edge.sdk_connector', '@apigee_edge.controller.organization', '@apigee_edge.controller.cache.apps', '@apigee_edge.controller.cache.app_ids', '@apigee_edge.entity.controller.cache.app_cache_by_owner_factory']
+
+  apigee_edge.controller.developer_app_controller_factory:
+    class: Drupal\apigee_edge\Entity\Controller\DeveloperAppControllerFactory
+    arguments: ['@apigee_edge.sdk_connector', '@apigee_edge.controller.organization', '@apigee_edge.controller.cache.apps', '@apigee_edge.entity.controller.cache.developer_app_cache_factory', '@apigee_edge.entity.controller.cache.developer_app_name_cache_factory']
+
+  apigee_edge.controller.developer_app_credential_factory:
+    class: Drupal\apigee_edge\Entity\Controller\DeveloperAppCredentialControllerFactory
+    arguments: ['@apigee_edge.sdk_connector', '@apigee_edge.entity.controller.cache.developer_app_cache_factory', '@event_dispatcher']
+
+  apigee_edge.controller.cache.entity_cache:
+    class: Drupal\apigee_edge\Entity\Controller\Cache\EntityCache
+    arguments: ['@apigee_edge.cache.memory_cache_factory']
+    abstract: true
+
+  apigee_edge.controller.cache.entity_id_cache:
+    class: Drupal\apigee_edge\Entity\Controller\Cache\EntityIdCache
+    abstract: true
+
+  apigee_edge.controller.cache.api_product:
+    parent: apigee_edge.controller.cache.entity_cache
+    arguments: ['@apigee_edge.controller.cache.api_product_ids', api_product]
+
+  apigee_edge.controller.cache.api_product_ids:
+    parent: apigee_edge.controller.cache.entity_id_cache
+
+  apigee_edge.controller.cache.developer:
+    class: Drupal\apigee_edge\Entity\Controller\Cache\DeveloperCache
+    parent: apigee_edge.controller.cache.entity_cache
+    arguments: ['@apigee_edge.controller.cache.developer_ids', developer]
+
+  apigee_edge.controller.cache.developer_companies:
+    class: Drupal\apigee_edge\Entity\DeveloperCompaniesCache
+    arguments: ['@apigee_edge.cache.memory_cache_factory']
+
+  apigee_edge.controller.cache.developer_ids:
+    class: Drupal\apigee_edge\Entity\Controller\Cache\DeveloperIdCache
+    parent: apigee_edge.controller.cache.entity_id_cache
+
+  apigee_edge.controller.cache.apps:
+    parent: apigee_edge.controller.cache.entity_cache
+    class: Drupal\apigee_edge\Entity\Controller\Cache\AppCache
+    arguments: ['@apigee_edge.controller.cache.app_ids', 'app']
+
+  apigee_edge.controller.cache.app_ids:
+    parent: apigee_edge.controller.cache.entity_id_cache
+    class: Drupal\apigee_edge\Entity\Controller\Cache\AppIdCache
+
+  apigee_edge.entity.controller.cache.app_name_cache_by_owner_factory:
+    class: Drupal\apigee_edge\Entity\Controller\Cache\AppNameCacheByOwnerFactory
+
+  apigee_edge.entity.controller.cache.app_cache_by_owner_factory:
+    class: Drupal\apigee_edge\Entity\Controller\Cache\AppCacheByOwnerFactory
+    arguments: ['@apigee_edge.controller.cache.apps', '@apigee_edge.entity.controller.cache.app_name_cache_by_owner_factory']
+
+  apigee_edge.entity.controller.cache.developer_app_cache_factory:
+   class: Drupal\apigee_edge\Entity\Controller\Cache\DeveloperAppCacheFactory
+   arguments: ['@apigee_edge.entity.controller.cache.app_cache_by_owner_factory', '@entity_type.manager', '@email.validator']
+
+  apigee_edge.entity.controller.cache.developer_app_name_cache_factory:
+    class: Drupal\apigee_edge\Entity\Controller\Cache\DeveloperAppNameCacheFactory
+    arguments: ['@apigee_edge.entity.controller.cache.app_name_cache_by_owner_factory', '@entity_type.manager', '@email.validator']
+
+  apigee_edge.cache.memory_cache_factory:
+    class: Drupal\apigee_edge\MemoryCacheFactory
+
+  apigee_edge.job_executor:
+    class: Drupal\apigee_edge\JobExecutor
+    arguments: ['@database', '@datetime.time', '@queue']
+
+  apigee_edge.exception_subscriber:
+    class: Drupal\apigee_edge\EventSubscriber\EdgeExceptionSubscriber
+    arguments:
+      - '@http_kernel'
+      - '@logger.channel.apigee_edge'
+      - '@redirect.destination'
+      - '@router.no_access_checks'
+      - '@config.factory'
+      - '@messenger'
+    tags:
+      - { name: event_subscriber }
+
+  apigee_edge.event_subscriber.edge_config_translation_change_subscriber:
+    class: Drupal\apigee_edge\EventSubscriber\EdgeConfigTranslationChangeSubscriber
+    tags:
+      - { name: event_subscriber }
+
+  apigee_edge.event_subscriber.developer_status_warning:
+    class: Drupal\apigee_edge\EventSubscriber\DeveloperStatusWarningSubscriber
+    arguments: ['@current_user', '@current_route_match', '@entity_type.manager', '@messenger', '@string_translation']
+    tags:
+      - { name: event_subscriber }
+
+  apigee_edge.event_subscriber.api_product_entity_access_cache_reset:
+    class: Drupal\apigee_edge\EventSubscriber\ApiProductEntityAccessCacheReset
+    arguments: ['@entity_type.manager']
+    tags:
+      - { name: event_subscriber }
+
+  access_check.app_by_app_name:
+    class: Drupal\apigee_edge\Access\AppAccessCheckByAppName
+    arguments: ['@entity_type.manager']
+    tags:
+      - { name: access_check, applies_to: _app_access_check_by_app_name }
+
+  entity.query.edge:
+    class: Drupal\apigee_edge\Entity\Query\QueryFactory
+    arguments:
+      - '@entity_type.manager'
+
+  route_enhancer.entity.app:
+    class: Drupal\apigee_edge\Entity\Enhancer\AppRouteEnhancer
+    tags:
+      - { name: route_enhancer}
+
+  route_subscriber.apigee_edge.developer_app_by_name:
+    class: Drupal\apigee_edge\Routing\DeveloperAppByNameRouteAlterSubscriber
+    tags:
+      - { name: event_subscriber }
+
+  route_subscriber.apigee_edge.entity_field_config_list:
+    class: Drupal\apigee_edge\Routing\EdgeEntityFieldConfigListRouteSubscriber
+    arguments: ['@entity_type.manager']
+    tags:
+      - { name: event_subscriber }
+
+  apigee_edge.event_subscriber.developer_app_field_config_list_alter_event_subscriber:
+    class: Drupal\apigee_edge\EventSubscriber\DeveloperAppFieldConfigListAlterEventSubscriber
+    arguments: ['@form_builder']
+    tags:
+      - { name: event_subscriber }
+
+  paramconverter.developer_with_user:
+    class: Drupal\apigee_edge\ParamConverter\DeveloperWithUser
+    arguments: ['@entity_type.manager']
+    tags:
+      - { name: paramconverter }
+
+  paramconverter.developer_app_name:
+    class: Drupal\apigee_edge\ParamConverter\DeveloperAppNameConverter
+    arguments: ['@entity_type.manager', '@logger.channel.apigee_edge']
+    tags:
+      - { name: paramconverter }
+
+  paramconverter.apigee_edge_load_unchanged_entity:
+    class: Drupal\apigee_edge\ParamConverter\ApigeeEdgeLoadUnchangedEntity
+    arguments: ['@entity_type.manager']
+    tags:
+      # Use a higher priority than EntityConverter, see the class for details.
+      - { name: paramconverter, priority: 10 }
+
+  plugin.manager.apigee_field_storage_format:
+    class: Drupal\apigee_edge\Plugin\FieldStorageFormatManager
+    parent: default_plugin_manager
+
+  apigee_edge.converter.field_attribute:
+    class: Drupal\apigee_edge\FieldAttributeConverter
+    arguments: ['@entity_field.manager', '@plugin.manager.apigee_field_storage_format', '@config.factory']
+
+  apigee_edge.converter.user_developer:
+    class: Drupal\apigee_edge\UserDeveloperConverter
+    arguments: ['@config.factory', '@entity_type.manager', '@plugin.manager.apigee_field_storage_format', '@apigee_edge.converter.field_attribute']
+
+  apigee_edge.authentication.oauth_token_storage:
+    class: Drupal\apigee_edge\OauthTokenFileStorage
+    arguments: ['@config.factory', '@file_system', '@logger.channel.apigee_edge']

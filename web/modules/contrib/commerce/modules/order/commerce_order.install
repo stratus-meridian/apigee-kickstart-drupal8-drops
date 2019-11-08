@@ -1,0 +1,106 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall functions for the Order module.
+ */
+
+use Drupal\Core\Field\BaseFieldDefinition;
+use Drupal\Core\Session\AccountInterface;
+
+/**
+ * Implements hook_install().
+ */
+function commerce_order_install() {
+  // Allow authenticated users to view own orders.
+  user_role_grant_permissions(AccountInterface::AUTHENTICATED_ROLE, ['view own commerce_order']);
+}
+
+/**
+ * Add the 'data' field to 'commerce_order_item' entities.
+ */
+function commerce_order_update_8201() {
+  $storage_definition = BaseFieldDefinition::create('map')
+    ->setLabel(t('Data'))
+    ->setDescription(t('A serialized array of additional data.'));
+
+  $update_manager = \Drupal::entityDefinitionUpdateManager();
+  $update_manager->installFieldStorageDefinition('data', 'commerce_order_item', 'commerce_order', $storage_definition);
+}
+
+/**
+ * Add the 'overridden_unit_price' field to 'commerce_order_item' entities.
+ */
+function commerce_order_update_8202() {
+  $storage_definition = BaseFieldDefinition::create('boolean')
+    ->setLabel(t('Overridden unit price'))
+    ->setDescription(t('Whether the unit price is overridden.'))
+    ->setDefaultValue(FALSE);
+
+  $update_manager = \Drupal::entityDefinitionUpdateManager();
+  $update_manager->installFieldStorageDefinition('overridden_unit_price', 'commerce_order_item', 'commerce_order', $storage_definition);
+}
+
+/**
+ * Add the 'locked' field to 'commerce_order' entities.
+ */
+function commerce_order_update_8203() {
+  $storage_definition = BaseFieldDefinition::create('boolean')
+    ->setLabel(t('Locked'))
+    ->setSettings([
+      'on_label' => t('Yes'),
+      'off_label' => t('No'),
+    ])
+    ->setDefaultValue(FALSE);
+
+  $update_manager = \Drupal::entityDefinitionUpdateManager();
+  $update_manager->installFieldStorageDefinition('locked', 'commerce_order', 'commerce_order', $storage_definition);
+}
+
+/**
+ * Add the 'uses_legacy_adjustments' field to 'commerce_order_item' entities.
+ */
+function commerce_order_update_8204() {
+  $storage_definition = BaseFieldDefinition::create('boolean')
+    ->setLabel(t('Uses legacy adjustments'))
+    ->setSettings([
+      'on_label' => t('Yes'),
+      'off_label' => t('No'),
+    ])
+    ->setDefaultValue(FALSE)
+    ->setInitialValue(TRUE);
+
+  $update_manager = \Drupal::entityDefinitionUpdateManager();
+  $update_manager->installFieldStorageDefinition('uses_legacy_adjustments', 'commerce_order_item', 'commerce_order', $storage_definition);
+}
+
+/**
+ * Add the 'total_paid' field to 'commerce_order' entities.
+ */
+function commerce_order_update_8205() {
+  $storage_definition = BaseFieldDefinition::create('commerce_price')
+    ->setLabel(t('Total paid'))
+    ->setDescription(t('The total paid price of the order.'))
+    ->setDisplayConfigurable('form', FALSE)
+    ->setDisplayConfigurable('view', TRUE);
+
+  $update_manager = \Drupal::entityDefinitionUpdateManager();
+  $update_manager->installFieldStorageDefinition('total_paid', 'commerce_order', 'commerce_order', $storage_definition);
+}
+
+/**
+ * Clears the address book for all customers, to avoid duplicates.
+ */
+function commerce_order_update_8206() {
+  // Bypass Entity API for better performance.
+  $database = \Drupal::database();
+  $database->query("UPDATE {profile} SET uid = 0 WHERE type = 'customer'");
+  $database->query("UPDATE {profile_revision} SET uid = 0 WHERE profile_id IN (SELECT profile_id FROM {profile} WHERE type = 'customer')");
+}
+
+/**
+ * Install the Commerce Number Pattern module.
+ */
+function commerce_order_update_8207() {
+  \Drupal::service('module_installer')->install(['commerce_number_pattern']);
+}

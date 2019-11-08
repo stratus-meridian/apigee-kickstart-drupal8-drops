@@ -1,0 +1,24 @@
+rate_plan.entity_list:
+  css:
+    theme:
+      css/apigee_m10n.plan-list.css: {}
+
+rate_plan.future_links_field:
+  css:
+    theme:
+      css/apigee_m10n.future-links-field.css: {}
+
+rate_plan.details_field:
+  css:
+    theme:
+      css/apigee_m10n.plan-details-field.css: {}
+
+prepaid_balance:
+  css:
+    theme:
+      css/apigee_m10n.prepaid-balance.css: {}
+
+tnc-widget:
+  css:
+    theme:
+      css/tnc-widget.css: {}

@@ -1,0 +1,231 @@
+apigee_edge.error_page:
+  type: config_object
+  label: 'Apigee Edge: Error page'
+  mapping:
+    error_page_title:
+      type: label
+      label: 'Error page title'
+    error_page_content:
+      type: mapping
+      mapping:
+        format:
+          type: string
+        value:
+          type: text
+          label: 'Error page content'
+    error_page_debug_messages:
+      type: boolean
+      label: 'Show additional debug messages'
+
+apigee_edge.auth:
+  type: config_object
+  mapping:
+    active_key:
+      type: string
+    oauth_token_storage_location:
+      type: string
+
+apigee_edge.client:
+  type: config_object
+  mapping:
+    http_client_connect_timeout:
+      type: float
+    http_client_timeout:
+      type: float
+    http_client_proxy:
+      type: string
+
+apigee_edge.common_app_settings:
+  type: config_object
+  label: 'Common app settings'
+  mapping:
+    display_as_select:
+      type: boolean
+    user_select:
+      type: boolean
+    multiple_products:
+      type: boolean
+    default_products:
+      type: sequence
+      sequence:
+        type: string
+    analytics_environment:
+      type: string
+    callback_url_pattern:
+      type: string
+    callback_url_pattern_error_message:
+      type: label
+      label: 'Human readable description of the validation criteria that a Callback URL should match'
+    callback_url_description:
+      type: label
+      label: 'Description of the Callback URL field'
+    callback_url_placeholder:
+      type: label
+      label: 'Placeholder for a Callback URL'
+
+apigee_edge.developer_app_settings:
+  type: config_object
+  label: 'Developer app settings'
+  mapping:
+    entity_label_singular:
+      type: label
+      label: 'How to refer to a Developer App on the UI (singular)'
+    entity_label_plural:
+      type: label
+      label: 'How to refer to a Developer App on the UI (plural)'
+    cache_expiration:
+      type: integer
+    required_base_fields:
+      type: sequence
+      sequence:
+        type: string
+    locked_base_fields:
+      type: sequence
+      sequence:
+        type: string
+    credential_lifetime:
+      type: integer
+
+field.widget.settings.app_callback_url:
+  type: mapping
+  label: 'Callback URL widget settings'
+  mapping:
+    size:
+      type: integer
+      label: 'Size of textfield'
+    placeholder:
+      type: label
+      label: 'Placeholder for a Callback URL field'
+    callback_url_pattern:
+      type: string
+      label: 'Regular expression that a Callback URL should match'
+    callback_url_pattern_error_message:
+      type: string
+      label: 'Client-side validation error message if a Callback URL does not match'
+    callback_url_description:
+      type: string
+      label: 'Description of a Callback URL field'
+
+apigee_edge.developer_settings:
+  type: config_object
+  label: 'Developer settings'
+  mapping:
+    verification_action:
+      type: string
+    display_only_error_message_content:
+      type: mapping
+      label: 'Error message when a new user registers and the developer email address is already taken on Apigee Edge but not in Drupal'
+      mapping:
+        format:
+          type: string
+        value:
+          type: text
+          label: 'Message'
+    verify_email_error_message:
+      type: mapping
+      mapping:
+        format:
+          type: string
+        value:
+          type: text
+    verification_email:
+      type: 'mail'
+      label: 'Verification email'
+    verification_token:
+      type: string
+    verification_token_expires:
+      type: integer
+    user_edit_error_message:
+      type: mapping
+      label: 'Error message displayed to a user when the email address is already taken on Apigee Edge but not in Drupal'
+      mapping:
+        format:
+          type: string
+        value:
+          type: text
+          label: 'Message'
+    cache_expiration:
+      type: integer
+
+apigee_edge.api_product_settings:
+  type: config_object
+  label: 'API Product settings'
+  mapping:
+    entity_label_singular:
+      type: label
+      label: 'How to refer to an API Product on the UI (singular)'
+    entity_label_plural:
+      type: label
+      label: 'How to refer to an API Product on the UI (plural)'
+    cache_expiration:
+      type: integer
+    access:
+      type: mapping
+      label: 'Filter displayed API products by access attribute'
+      mapping:
+        public:
+          type: sequence
+          sequence:
+            type: string
+        private:
+          type: sequence
+          sequence:
+            type: string
+        internal:
+          type: sequence
+          sequence:
+            type: string
+
+apigee_edge.sync:
+  type: config_object
+  mapping:
+    filter:
+      type: string
+    user_fields_to_sync:
+      type: sequence
+      sequence:
+        type: string
+
+key.type.apigee_auth:
+  type: sequence
+
+key.input.apigee_auth_input:
+  type: sequence
+
+key.provider.apigee_edge_environment_variables:
+  type: sequence
+
+key.provider.apigee_edge_private_file:
+  type: sequence
+
+field.formatter.settings.status_property:
+  type: mapping
+  label: 'Status property settings'
+  mapping:
+    indicator_status_ok:
+      type: string
+      label: 'Indicator status: OK'
+    indicator_status_warning:
+      type: string
+      label: 'Indicator status: Warning'
+    indicator_status_error:
+      type: string
+      label: 'Indicator status: Error'
+
+# Dangerous settings. Enabling these might lead to data corruption.
+#
+# Mostly used for testing, or in specific scenarios.
+apigee_edge.dangerzone:
+  type: config_object
+  label: 'Dangerous settings'
+  mapping:
+
+    # Allows changing whether single or multiple products can be assigned for an app,
+    # even when content exists.
+    skip_developer_app_settings_validation:
+      type: boolean
+    # Disable modifications added by the Apigee Edge module to the Key add/edit
+    # forms. If something would be broken because of the customizations that
+    # we made this is the simplest way to disable them without any code change.
+    do_not_alter_key_entity_forms:
+      type: boolean

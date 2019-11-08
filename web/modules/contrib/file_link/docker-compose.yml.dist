@@ -1,0 +1,58 @@
+version: "2"
+
+services:
+
+  mariadb:
+    image: wodby/mariadb:10.1-3.3.0
+    stop_grace_period: 30s
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: drupal
+      MYSQL_USER: drupal
+      MYSQL_PASSWORD: drupal
+
+  php:
+    image: wodby/drupal-php:${TRAVIS_PHP_VERSION}-4.6.3
+    environment:
+      PHP_SENDMAIL_PATH: /usr/sbin/sendmail -t -i -S mailhog:1025
+      DB_HOST: mariadb
+      DB_USER: drupal
+      DB_PASSWORD: drupal
+      DB_NAME: drupal
+      DB_DRIVER: mysql
+      PHP_XDEBUG: 1
+      PHP_XDEBUG_DEFAULT_ENABLE: 1
+      PHP_XDEBUG_REMOTE_CONNECT_BACK: 1
+      PHP_XDEBUG_REMOTE_HOST: "10.254.254.254"
+      PHP_XDEBUG_IDEKEY: "PHPSTORM"
+      PHP_IDE_CONFIG: "serverName=file_link"
+    volumes:
+    - ./:/var/www/html
+
+  nginx:
+    image: wodby/nginx:1.15-5.0.0
+    depends_on:
+    - php
+    environment:
+      NGINX_STATIC_OPEN_FILE_CACHE: "off"
+      NGINX_ERROR_LOG_LEVEL: debug
+      NGINX_BACKEND_HOST: php
+      NGINX_SERVER_ROOT: /var/www/html/build
+      NGINX_VHOST_PRESET: drupal8
+    volumes:
+    - ./:/var/www/html
+    labels:
+    - 'traefik.backend=nginx'
+    - 'traefik.port=80'
+    - 'traefik.frontend.rule=Host:file_link.localhost'
+
+  traefik:
+    image: traefik
+    command: -c /dev/null --web --docker --logLevel=INFO
+    ports:
+    - '80:80'
+    volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  codebase:

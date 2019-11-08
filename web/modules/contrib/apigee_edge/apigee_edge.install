@@ -1,0 +1,180 @@
+<?php
+
+/**
+ * @file
+ * Copyright 2018 Google Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License version 2 as published by the
+ * Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public
+ * License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc., 51
+ * Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ */
+
+/**
+ * @file
+ * Install, update and uninstall functions for Apigee Edge.
+ */
+
+use Drupal\apigee_edge\Plugin\KeyType\ApigeeAuthKeyType;
+use Drupal\apigee_edge\OauthTokenFileStorage;
+use Drupal\Component\Serialization\Json;
+use Drupal\Core\Url;
+use Drupal\key\Plugin\KeyProviderSettableValueInterface;
+use Drupal\user\RoleInterface;
+
+/**
+ * Implements hook_requirements().
+ */
+function apigee_edge_requirements($phase) {
+  $requirements = [];
+
+  if ($phase === 'install') {
+    // This should be checked only if Drupal is installed.
+    if (!drupal_installation_attempted()) {
+      $missing_mails = \Drupal::entityQuery('user')
+        ->notExists('mail')
+        ->condition('uid', '0', '<>')
+        ->execute();
+      if (!empty($missing_mails)) {
+        $requirements['apigee_edge_missing_mail'] = [
+          'title' => t('Apigee Edge'),
+          'description' => t('The module can be installed only if all users have emails in Drupal, because email is a required attribute on Apigee Edge.'),
+          'severity' => REQUIREMENT_ERROR,
+        ];
+      }
+    }
+  }
+  elseif ($phase === 'runtime') {
+    /** @var \Drupal\apigee_edge\SDKConnectorInterface $sdk_connector */
+    $sdk_connector = \Drupal::service('apigee_edge.sdk_connector');
+    try {
+      $sdk_connector->testConnection();
+    }
+    catch (\Exception $exception) {
+      $requirements['apigee_edge_connection_error'] = [
+        'title' => t('Apigee Edge'),
+        'value' => $exception->getMessage(),
+        'description' => t('Cannot connect to Apigee Edge server. You have either given wrong credential details or the Apigee Edge server is unreachable. Visit the <a href=":url">Apigee Edge general settings</a> page to get more information.', [
+          ':url' => Url::fromRoute('apigee_edge.settings', ['destination' => 'admin/reports/status'])->toString(),
+        ]),
+        'severity' => REQUIREMENT_WARNING,
+      ];
+    }
+  }
+
+  return $requirements;
+}
+
+/**
+ * Implements hook_install().
+ */
+function apigee_edge_install() {
+  if (\Drupal::moduleHandler()->moduleExists('user')) {
+    $authenticated_user_permissions = [
+      'view own developer_app',
+      'create developer_app',
+      'update own developer_app',
+      'delete own developer_app',
+      'analytics own developer_app',
+    ];
+    user_role_grant_permissions(RoleInterface::AUTHENTICATED_ID, $authenticated_user_permissions);
+  }
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function apigee_edge_uninstall() {
+  // Remove OAuth token data file.
+  // We do not check whether OAuth was the authentication method in use
+  // because this function does not trigger an error if it was not.
+  $storage = \Drupal::service('apigee_edge.authentication.oauth_token_storage');
+  if ($storage instanceof OauthTokenFileStorage) {
+    $storage->removeTokenFile();
+  }
+}
+
+/**
+ * Implements hook_schema().
+ */
+function apigee_edge_schema() {
+  $schema = [];
+
+  $schema['apigee_edge_job'] = [
+    'fields' => [
+      'id' => [
+        'type' => 'varchar',
+        'length' => 36,
+        'not null' => TRUE,
+      ],
+      'status' => [
+        'type' => 'int',
+        'not null' => TRUE,
+      ],
+      'tag' => [
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ],
+      'job' => [
+        'type' => 'blob',
+        'not null' => TRUE,
+      ],
+      'created' => [
+        'type' => 'int',
+        'not null' => TRUE,
+      ],
+      'updated' => [
+        'type' => 'int',
+        'not null' => TRUE,
+      ],
+    ],
+    'primary key' => ['id'],
+    'indexes' => [
+      'updated_idx' => ['updated'],
+      'status_idx' => ['status'],
+      'tag_idx' => ['tag'],
+    ],
+  ];
+
+  return $schema;
+}
+
+/**
+ * Initialize apigee_edge.dangerzone settings with default values.
+ */
+function apigee_edge_update_8001() {
+  $config_factory = \Drupal::configFactory();
+
+  $dangerzone_settings = $config_factory->getEditable('apigee_edge.dangerzone');
+  $dangerzone_settings
+    ->set('skip_developer_app_settings_validation', FALSE)
+    ->set('do_not_alter_key_entity_forms', FALSE)
+    ->save(TRUE);
+}
+
+/**
+ * Update defaults on Apigee Auth Keys.
+ */
+function apigee_edge_update_8002() {
+  $keys = \Drupal::service('key.repository')->getKeys();
+  foreach ($keys as $key) {
+    /* @var \Drupal\key\Entity\Key $key */
+    if ($key->getKeyType() instanceof ApigeeAuthKeyType && $key->getKeyProvider() instanceof KeyProviderSettableValueInterface) {
+      $values = $key->getKeyValues();
+      $values['endpoint_type'] = $values['endpoint'] ? 'custom' : 'default';
+      $values['authorization_server_type'] = $values['authorization_server'] ? 'custom' : 'default';
+      $key->setKeyValue(Json::encode($values));
+      $key->save();
+    }
+  }
+}

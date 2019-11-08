@@ -1,0 +1,50 @@
+name: 'Apigee Kickstart'
+description: 'A custom Drupal 8 theme for the Apigee Developer Portal Distribution, based on <a href="https://drupal.org/project/radix">Radix</a>.'
+core: 8.x
+version: VERSION
+type: theme
+base theme: radix
+
+regions:
+  navbar_branding: 'Navbar Branding'
+  navbar_left:  'Navbar Left'
+  navbar_right: 'Navbar Right'
+  breadcrumbs: Breadcrumbs
+  header: Header
+  content_above: 'Content Above'
+  tasks: Tasks
+  content: Content
+  sidebar_first: 'Sidebar First'
+  sidebar_second: 'Sidebar Second'
+  content_below: 'Content Below'
+  footer: Footer
+  copyright: Copyright
+
+libraries:
+  - radix/style
+  - apigee_kickstart/font.roboto
+  - apigee_kickstart/style
+
+libraries-override:
+  radix/bootstrap: false
+  apigee_edge/apigee_edge.components: false
+  apigee_edge/apigee_edge.app_view: false
+  apigee_m10n/rate_plan.entity_list: false
+  apigee_m10n/rate_plan.future_links_field: false
+  apigee_m10n/rate_plan.details_field: false
+
+libraries-extend:
+  commerce_authnet/form-authnet:
+    - apigee_kickstart/commerce.authnet
+  commerce_stripe/form:
+    - apigee_kickstart/commerce.stripe
+  apigee_m10n/prepaid_balance:
+    - apigee_kickstart/monetization.add-credit
+
+ckeditor_stylesheets:
+  - assets/css/apigee-kickstart.style.css
+
+component-libraries:
+  apigee-kickstart:
+    paths:
+      - ./src/components

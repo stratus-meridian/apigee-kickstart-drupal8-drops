@@ -1,0 +1,69 @@
+<?php
+
+/**
+ * @file
+ * Contains file_link.module.
+ */
+
+use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\Core\Link;
+
+/**
+ * Implements hook_help().
+ */
+function file_link_help($route_name, RouteMatchInterface $route_match) {
+  switch ($route_name) {
+    // Main module help for the featured_content module.
+    case 'help.page.file_link':
+      $output = '';
+      $output .= '<h3>' . t('About') . '</h3>';
+      $output .= '<p>' . t('File Link module provides a field that extends the core Link module field by storing metadata about the target file like size and mime-type. The link URI must point to file not to a directory. The site builder can define a list of allowed target file extensions.') . '</p>';
+      return $output;
+
+    default:
+  }
+}
+
+/**
+ * Implements hook_theme().
+ */
+function file_link_theme() {
+  return [
+    'file_link_formatter' => [
+      'variables' => [
+        'link' => NULL,
+        'size' => NULL,
+        'format' => NULL,
+      ],
+    ],
+    'file_link_formatter_link_separate' => [
+      'variables' => [
+        'title' => NULL,
+        'url_title' => NULL,
+        'url' => NULL,
+        'size' => NULL,
+        'format' => NULL,
+      ],
+    ],
+  ];
+}
+
+/**
+ * Prepares variables for separated file_link field templates.
+ *
+ * This template outputs a separate title and link.
+ *
+ * Default template: file-link-formatter-link-separate.html.twig.
+ *
+ * @param array $variables
+ *   An associative array containing:
+ *   - title: (optional) A descriptive or alternate title for the link, which
+ *     may be different than the actual link text.
+ *   - url_title: The anchor text for the link.
+ *   - url: A \Drupal\Core\Url object.
+ *   - size: The target file size formatted according to formatter settings.
+ *   - format: The file mime-type.
+ */
+function template_preprocess_file_link_formatter_link_separate(array &$variables) {
+  $variables['link'] = Link::fromTextAndUrl($variables['url_title'], $variables['url']);
+}

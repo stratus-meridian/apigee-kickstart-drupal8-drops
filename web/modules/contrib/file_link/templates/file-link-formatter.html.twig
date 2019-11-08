@@ -1,0 +1,21 @@
+{#
+/**
+ * @file
+ * Default theme implementation of a file_link.
+ *
+ * Available variables:
+ * - link: The link that has already been formatted to include the title.
+ * - size: The target file size formatted according to formatter settings.
+ * - format: The file mime-type.
+ *
+ * @see template_preprocess()
+ *
+ * @ingroup themeable
+ */
+#}
+{% spaceless %}
+  {{ link }}
+{% if format and size %}
+  ({{ format }}, {{ size }})
+{% endif %}
+{% endspaceless %}

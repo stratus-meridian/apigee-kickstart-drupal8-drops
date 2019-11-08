@@ -1,0 +1,30 @@
+{
+    "name": "drupal/apigee_m10n",
+    "license": "GPL-2.0",
+    "type": "drupal-module",
+    "description": "Apigee Edge Monetization for Drupal",
+    "require": {
+        "php": ">=7.1",
+        "ext-bcmath": "*",
+        "cweagans/composer-patches": "~1.6",
+        "commerceguys/intl": "~1.0",
+        "drupal/apigee_edge": "~1.0",
+        "apigee/apigee-client-php": "~2.0.3"
+    },
+    "require-dev": {
+        "behat/mink-extension": "v2.2",
+        "behat/mink-selenium2-driver": "1.3.x-dev",
+        "bex/behat-screenshot": "^1.2",
+        "consolidation/robo": "~1.0",
+        "drupal/coder": "^8.3",
+        "drupal/drupal-extension": "master-dev",
+        "phpmd/phpmd": "^2.6",
+        "phpmetrics/phpmetrics": "^2.4",
+        "phpunit/phpunit": "^6.5"
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}

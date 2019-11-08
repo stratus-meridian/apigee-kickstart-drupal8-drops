@@ -1,0 +1,72 @@
+<?php
+
+/**
+ * @file
+ * Copyright 2019 Google Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License version 2 as published by the
+ * Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public
+ * License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc., 51
+ * Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ */
+
+/**
+ * @file
+ * Module file for Apigee Edge: API Docs.
+ */
+
+use Drupal\Core\Access\AccessResult;
+use Drupal\Core\Entity\EntityTypeInterface;
+use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\Core\Session\AccountInterface;
+
+/**
+ * Implements hook_help().
+ */
+function apigee_api_catalog_help($route_name, RouteMatchInterface $route_match) {
+  switch ($route_name) {
+    // Main module help for the apigee_api_catalog module.
+    case 'help.page.apigee_api_catalog':
+      $output = '';
+      $output .= '<h3>' . t('About') . '</h3>';
+      $output .= '<p>' . t('Display documentation of your APIs to your developers using OpenAPI documentation.') . '</p>';
+      return $output;
+
+    default:
+  }
+}
+
+/**
+ * Implements hook_jsonapi_ENTITY_TYPE_filter_access() for 'apidoc'.
+ */
+function apigee_api_catalog_jsonapi_apidoc_filter_access(EntityTypeInterface $entity_type, AccountInterface $account) {
+  // Allow admins to see all entities.
+  if (($admin_permission = $entity_type->getAdminPermission()) && $account->hasPermission($admin_permission)) {
+    return ([
+      JSONAPI_FILTER_AMONG_ALL => AccessResult::allowed()->cachePerPermissions(),
+    ]);
+  }
+
+  // Allow all entities if account has view published and unpublished or
+  // account had API Catalog admin permission.
+  if ($account->hasPermission('view published apidoc entities') &&
+    $account->hasPermission('view unpublished apidoc entities')) {
+    return([
+      JSONAPI_FILTER_AMONG_ALL => AccessResult::allowed()->cachePerPermissions(),
+    ]);
+  }
+
+  // Allow access to published entities if user has permission to view
+  // published.
+  return ([
+    JSONAPI_FILTER_AMONG_PUBLISHED => AccessResult::allowedIfHasPermission($account, 'view published apidoc entities'),
+  ]);
+}

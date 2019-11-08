@@ -1,0 +1,132 @@
+apigee_edge.settings:
+  route_name: apigee_edge.settings
+  title: 'Credentials'
+  base_route: apigee_edge.settings
+
+apigee_edge.settings.connection_config:
+  route_name: apigee_edge.settings.connection_config
+  title: 'Connection settings'
+  base_route: apigee_edge.settings
+
+apigee_edge.settings.error_page:
+  route_name: apigee_edge.settings.error_page
+  title: 'Error handling'
+  base_route: apigee_edge.settings
+
+apigee_edge.settings.general_app:
+  route_name: apigee_edge.settings.general_app
+  title: 'API product associations'
+  base_route: apigee_edge.settings.general_app
+  weight: -10
+
+apigee_edge.settings.general_app.callback_url_validation:
+  route_name: apigee_edge.settings.general_app.callback_url_validation
+  title: 'Callback URL validation'
+  base_route: apigee_edge.settings.general_app
+
+apigee_edge.settings.general_app.analytics:
+  route_name: apigee_edge.settings.general_app.analytics
+  title: 'Analytics'
+  base_route: apigee_edge.settings.general_app
+
+apigee_edge.settings.developer_app.alias:
+  route_name: apigee_edge.settings.developer_app
+  title: 'Alias'
+  base_route: apigee_edge.settings.developer_app
+  weight: -10
+
+apigee_edge.settings.developer_app.credentials:
+  route_name: apigee_edge.settings.developer_app.credentials
+  title: 'Credentials'
+  base_route: apigee_edge.settings.developer_app
+
+apigee_edge.settings.developer_app.caching:
+  route_name: apigee_edge.settings.developer_app.caching
+  title: 'Caching'
+  base_route: apigee_edge.settings.developer_app
+  weight: 10
+
+apigee_edge.settings.product.alias:
+  route_name: apigee_edge.settings.product.alias
+  title: 'Alias'
+  base_route: apigee_edge.settings.product.alias
+
+apigee_edge.settings.product.caching:
+  route_name: apigee_edge.settings.product.caching
+  title: 'Caching'
+  base_route: apigee_edge.settings.product.alias
+
+apigee_edge.settings.developer:
+  route_name: apigee_edge.settings.developer
+  title: 'Registration'
+  base_route: apigee_edge.settings.developer
+
+apigee_edge.settings.developer.attributes:
+  route_name: apigee_edge.settings.developer.attributes
+  title: 'Custom Attributes'
+  base_route: apigee_edge.settings.developer
+
+apigee_edge.settings.developer.cache:
+  route_name: apigee_edge.settings.developer.cache
+  title: 'Caching'
+  base_route: apigee_edge.settings.developer
+  weight: 10
+
+apigee_edge.settings.product.api_product_access:
+  route_name: apigee_edge.settings.developer.api_product_access
+  title: 'API product access'
+  base_route: apigee_edge.settings.product.alias
+  weight: 20
+
+apigee_edge.settings.developer.sync:
+  route_name: apigee_edge.settings.developer.sync
+  title: 'Synchronization'
+  base_route: apigee_edge.settings.developer
+
+apigee_edge.developer_app.view:
+  route_name: entity.developer_app.canonical
+  title: 'View'
+  base_route: entity.developer_app.canonical
+  weight: -4
+
+apigee_edge.developer_app.edit:
+  route_name: entity.developer_app.edit_form
+  title: 'Edit'
+  base_route: entity.developer_app.canonical
+  weight: -3
+
+apigee_edge.developer_app.delete:
+  route_name: entity.developer_app.delete_form
+  title: 'Delete'
+  base_route: entity.developer_app.canonical
+  weight: -2
+
+apigee_edge.developer_app.analytics:
+  route_name: entity.developer_app.analytics
+  title: 'Analytics'
+  base_route: entity.developer_app.canonical
+  weight: -1
+
+apigee_edge.developer_app.view_by_developer:
+  route_name: entity.developer_app.canonical_by_developer
+  title: 'View'
+  base_route: entity.developer_app.canonical_by_developer
+  weight: -4
+
+apigee_edge.developer_app.edit_for_developer:
+  route_name: entity.developer_app.edit_form_for_developer
+  title: 'Edit'
+  base_route: entity.developer_app.canonical_by_developer
+  weight: -3
+
+apigee_edge.developer_app.delete_for_developer:
+  route_name: entity.developer_app.delete_form_for_developer
+  title: 'Delete'
+  base_route: entity.developer_app.canonical_by_developer
+  weight: -2
+
+apigee_edge.developer_app.analytics_for_developer:
+  route_name: entity.developer_app.analytics_for_developer
+  title: 'Analytics'
+  base_route: entity.developer_app.canonical_by_developer
+  weight: -1

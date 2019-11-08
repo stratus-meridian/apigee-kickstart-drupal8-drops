@@ -1,0 +1,13 @@
+name: Commerce Price
+type: module
+description: 'Defines the Currency entity.'
+package: Commerce
+core: 8.x
+configure: entity.commerce_currency.collection
+dependencies:
+  - commerce:commerce
+
+# Information added by Drupal.org packaging script on 2019-11-06
+version: '8.x-2.15'
+project: 'commerce'
+datestamp: 1573065191

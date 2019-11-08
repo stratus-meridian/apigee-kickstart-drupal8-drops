@@ -1,0 +1,61 @@
+{#
+/**
+ * @file
+ * Template for a fieldset component.
+ */
+#}
+{%
+  set classes = [
+  'js-form-item',
+  'form-item',
+  'js-form-wrapper',
+  'form-wrapper',
+  'border',
+  'mb-3',
+]
+%}
+<fieldset{{ attributes.addClass(classes) }}>
+  {%
+    set legend_classes = [
+      'float-left',
+      'py-2',
+      'px-4',
+      'mb-0',
+      'border-bottom',
+    ]
+  %}
+  {%
+    set legend_span_classes = [
+      'fieldset-legend',
+      required ? 'js-form-required',
+      required ? 'form-required',
+    ]
+  %}
+  <legend{{ legend.attributes.addClass(legend_classes) }}>
+      {#  Always wrap fieldset legends in a SPAN for CSS positioning. #}
+      <span{{ legend_span.attributes.addClass(legend_span_classes) }}>
+        {{ legend.title }}
+      </span>
+
+      <button class="btn-link">
+        <i class="fas fa-chevron-down d-md-none"></i>
+      </button>
+  </legend>
+  <div class="p-4 fieldset-wrapper">
+    {% if errors %}
+      <div>
+        {{ errors }}
+      </div>
+    {% endif %}
+    {% if prefix %}
+      <span class="field-prefix">{{ prefix }}</span>
+    {% endif %}
+    {{ children }}
+    {% if suffix %}
+      <span class="field-suffix">{{ suffix }}</span>
+    {% endif %}
+    {% if description.content %}
+      <small{{ description.attributes.addClass('description', 'form-text', 'text-muted') }}>{{ description.content }}</small>
+    {% endif %}
+  </div>
+</fieldset>

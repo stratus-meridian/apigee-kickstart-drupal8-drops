@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit bootstrap="${drupal.root}/core/tests/bootstrap.php" backupGlobals="true" colors="true" >
+    <php>
+        <!-- Set error reporting to E_ALL. -->
+        <ini name="error_reporting" value="32767"/>
+        <!-- Do not limit the amount of memory tests take to run. -->
+        <ini name="memory_limit" value="-1"/>
+        <env name="SIMPLETEST_BASE_URL" value="${drupal.base_url}"/>
+        <env name="SIMPLETEST_IGNORE_DIRECTORIES" value="${drupal.root}"/>
+        <env name="BROWSERTEST_OUTPUT_DIRECTORY" value="/tmp"/>
+        <env name="SIMPLETEST_DB" value="mysql://${drupal.database.user}:${drupal.database.password}@${drupal.database.host}:${drupal.database.port}/${drupal.database.name}"/>
+    </php>
+    <testsuites>
+        <testsuite name="File Link Test Suite">
+            <directory>./tests</directory>
+        </testsuite>
+    </testsuites>
+</phpunit>

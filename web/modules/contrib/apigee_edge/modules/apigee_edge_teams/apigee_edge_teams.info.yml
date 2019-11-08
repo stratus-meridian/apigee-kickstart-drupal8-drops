@@ -1,0 +1,18 @@
+name: Apigee Edge Teams
+description: Provides shared app functionality by allowing developers to be organised into teams.
+package: Apigee (Experimental)
+
+type: module
+core: 8.x
+
+dependencies:
+- apigee_edge:apigee_edge
+
+configure: apigee_edge_teams.settings.team
+
+php: "7.1"
+
+# Information added by Drupal.org packaging script on 2019-10-29
+version: '8.x-1.2'
+project: 'apigee_edge'
+datestamp: 1572322691

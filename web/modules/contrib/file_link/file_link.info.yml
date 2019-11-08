@@ -1,0 +1,14 @@
+type: module
+name: File Link
+description: 'Extends the core Link module by storing metadata about the target file.'
+# core: 8.x
+package: Field types
+dependencies:
+  - link
+  - file
+
+# Information added by Drupal.org packaging script on 2019-07-26
+version: '8.x-1.7'
+core: '8.x'
+project: 'file_link'
+datestamp: 1564127287

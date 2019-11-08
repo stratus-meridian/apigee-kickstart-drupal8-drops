@@ -1,0 +1,1642 @@
+<?php
+
+/**
+ * @file
+ * Copyright 2018 Google Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License version 2 as published by the
+ * Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public
+ * License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc., 51
+ * Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ */
+
+/**
+ * @file
+ * Main module file for Apigee Edge.
+ */
+
+use Apigee\Edge\Api\Management\Entity\AppCredentialInterface;
+use Apigee\Edge\Api\Management\Serializer\AppCredentialSerializer;
+use Apigee\Edge\Exception\ApiException;
+use Apigee\Edge\Exception\ClientErrorException;
+use Apigee\Edge\Structure\CredentialProduct;
+use Drupal\apigee_edge\Element\StatusPropertyElement;
+use Drupal\apigee_edge\Entity\ApiProduct;
+use Drupal\apigee_edge\Entity\AppInterface;
+use Drupal\apigee_edge\Entity\Developer;
+use Drupal\apigee_edge\Exception\UserDeveloperConversionNoStorageFormatterFoundException;
+use Drupal\apigee_edge\Exception\UserDeveloperConversionUserFieldDoesNotExistException;
+use Drupal\apigee_edge\Form\DeveloperSettingsForm;
+use Drupal\apigee_edge\JobExecutor;
+use Drupal\apigee_edge\Plugin\Field\FieldType\ApigeeEdgeDeveloperIdFieldItem;
+use Drupal\apigee_edge\Plugin\Validation\Constraint\DeveloperEmailUniqueValidator;
+use Drupal\Component\Render\PlainTextOutput;
+use Drupal\Component\Utility\Crypt;
+use Drupal\Component\Utility\Xss;
+use Drupal\Core\Access\AccessResult;
+use Drupal\Core\Breadcrumb\Breadcrumb;
+use Drupal\Core\Entity\Display\EntityViewDisplayInterface;
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Entity\EntityTypeInterface;
+use Drupal\Core\Field\BaseFieldDefinition;
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Link;
+use Drupal\Core\Render\Element;
+use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\Core\Session\AccountInterface;
+use Drupal\Core\Site\Settings;
+use Drupal\Core\StringTranslation\TranslatableMarkup;
+use Drupal\Core\Template\Attribute;
+use Drupal\Core\TempStore\TempStoreException;
+use Drupal\Core\Url;
+use Drupal\Core\Utility\Error;
+use Drupal\user\UserInterface;
+use Drupal\Component\Utility\Html;
+
+define('APIGEE_EDGE_USER_REGISTRATION_SOURCE', 'apigee_edge_user_registration_source');
+
+/**
+ * Implements hook_module_implements_alter().
+ */
+function apigee_edge_module_implements_alter(&$implementations, $hook) {
+  if (in_array($hook, ['form_user_register_form_alter', 'form_user_form_alter'])) {
+    // Move apigee_edge_form_user_register_form_alter() and
+    // apigee_edge_form_user_form_alter() alter hook implementations to the
+    // end of the list.
+    $group = $implementations['apigee_edge'];
+    unset($implementations['apigee_edge']);
+    $implementations['apigee_edge'] = $group;
+  }
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function apigee_edge_form_apigee_edge_authentication_form_alter(array &$form, FormStateInterface $form_state, string $form_id) {
+  /** @var bool $do_not_alter_key_entity_forms */
+  $do_not_alter_key_entity_forms = \Drupal::config('apigee_edge.dangerzone')->get('do_not_alter_key_entity_forms');
+  // Even if the original Key forms should not be altered, the Authentication
+  // form provided by this module should still work the same.
+  if ($do_not_alter_key_entity_forms) {
+    /** @var \Drupal\apigee_edge\KeyEntityFormEnhancer $key_entity_form_enhancer */
+    $key_entity_form_enhancer = \Drupal::service('apigee_edge.key_entity_form_enhancer');
+    $key_entity_form_enhancer->alterForm($form, $form_state);
+  }
+}
+
+/**
+ * Implements hook_form_BASE_FORM_ID_alter().
+ */
+function apigee_edge_form_key_form_alter(array &$form, FormStateInterface $form_state, string $form_id) {
+  /** @var bool $do_not_alter_key_entity_forms */
+  $do_not_alter_key_entity_forms = \Drupal::config('apigee_edge.dangerzone')->get('do_not_alter_key_entity_forms');
+  // Even if the original Key forms should not be altered, the Authentication
+  // form provided by this module should still work the same.
+  if ($do_not_alter_key_entity_forms) {
+    return;
+  }
+
+  /** @var \Drupal\apigee_edge\KeyEntityFormEnhancer $key_entity_form_enhancer */
+  $key_entity_form_enhancer = \Drupal::service('apigee_edge.key_entity_form_enhancer');
+  // Only those Key forms gets altered that defines an Apigee Edge key type.
+  $key_entity_form_enhancer->alterForm($form, $form_state);
+}
+
+/**
+ * Implements hook_theme().
+ */
+function apigee_edge_theme() {
+  return [
+    'apigee_entity' => [
+      'render element' => 'elements',
+    ],
+    'apigee_entity__app' => [
+      'render element' => 'elements',
+      'base hook' => 'apigee_entity',
+    ],
+    'app_credential' => [
+      'render element' => 'elements',
+    ],
+    'app_credential_product_list' => [
+      'render element' => 'elements',
+    ],
+    'status_property' => [
+      'render element' => 'element',
+    ],
+  ];
+}
+
+/**
+ * Implements hook_user_format_name_alter().
+ */
+function apigee_edge_user_format_name_alter(&$name, AccountInterface $account) {
+  // Ignore Anonymous user.
+  if ($account instanceof UserInterface && !$account->isAnonymous()) {
+    $first_name_last_name = trim($account->get('first_name')->value) . ' ' . trim($account->get('last_name')->value);
+    // If both fields were empty this string still could be empty.
+    $first_name_last_name = trim($first_name_last_name);
+    if (!empty($first_name_last_name)) {
+      $name = $first_name_last_name;
+    }
+  }
+}
+
+/**
+ * Prepares variables for Apigee entity templates.
+ *
+ * Default template: apigee-entity.html.twig.
+ *
+ * @param array $variables
+ *   An associative array containing:
+ *   - elements: An array of elements to display in view mode.
+ */
+function template_preprocess_apigee_entity(array &$variables) {
+  $variables['view_mode'] = $variables['elements']['#view_mode'];
+  /** @var \Drupal\apigee_edge\Entity\EdgeEntityInterface $entity */
+  $entity = $variables['entity'] = $variables['elements']['#entity'];
+
+  $variables['label'] = $entity->label();
+
+  if (!$entity->isNew() && $entity->hasLinkTemplate('canonical')) {
+    $variables['url'] = $entity->toUrl('canonical', ['language' => $entity->language()])->toString();
+  }
+
+  // Helpful $content variable for templates.
+  $variables += ['content' => []];
+  foreach (Element::children($variables['elements']) as $key) {
+    $variables['content'][$key] = $variables['elements'][$key];
+  }
+}
+
+/**
+ * Implements hook_theme_suggestions_HOOK().
+ */
+function apigee_edge_theme_suggestions_apigee_entity(array $variables) {
+  $suggestions = [];
+  /** @var \Drupal\apigee_edge\Entity\EdgeEntityInterface $entity */
+  $entity = $variables['elements']['#entity'];
+  $sanitized_view_mode = str_replace('.', '_', $variables['elements']['#view_mode']);
+
+  if ($entity instanceof AppInterface) {
+    $suggestions[] = 'apigee_entity__app';
+    $suggestions[] = 'apigee_entity__app__' . $sanitized_view_mode;
+  }
+
+  $suggestions[] = 'apigee_entity__' . $entity->getEntityTypeId();
+  $suggestions[] = 'apigee_entity__' . $entity->getEntityTypeId() . '__' . $sanitized_view_mode;
+
+  return $suggestions;
+}
+
+/**
+ * Prepares variables for status_property templates.
+ *
+ * Default template: status_property.html.twig.
+ *
+ * @param array $variables
+ *   An associative array.
+ */
+function template_preprocess_status_property(array &$variables) {
+  $element = &$variables['element'];
+  $element['value'] = $element['#value'];
+  $classes = ['status-value-' . Html::getClass($element['#value'])];
+  if ($element['#indicator_status'] !== '') {
+    $classes[] = str_replace('_', '-', $element['#indicator_status']);
+  }
+  $element['attributes'] = new Attribute(['class' => $classes]);
+}
+
+/**
+ * Implements hook_system_breadcrumb_alter().
+ */
+function apigee_edge_system_breadcrumb_alter(Breadcrumb &$breadcrumb, RouteMatchInterface $route_match, array $context) {
+  // Remove breadcrumb cache from every path under "/user" to let
+  // CreateAppForDeveloperBreadcrumbBuilder build breadcrumb properly on the
+  // add developer app for developer page.
+  if (preg_match('/^\/user.*/', $route_match->getRouteObject()->getPath())) {
+    $breadcrumb->mergeCacheMaxAge(0);
+  }
+  if ($route_match->getRouteName() === 'entity.developer_app.add_form_for_developer') {
+    $collection_route_by_developer_name = 'entity.developer_app.collection_by_developer';
+    /** @var \Drupal\Core\Controller\TitleResolverInterface $title_resolver */
+    $title_resolver = \Drupal::service('title_resolver');
+    /** @var \Drupal\Core\Routing\RouteProviderInterface $route_provider */
+    $route_provider = \Drupal::service('router.route_provider');
+    $breadcrumb->addLink(Link::createFromRoute(
+      $title_resolver->getTitle(\Drupal::requestStack()->getCurrentRequest(), $route_provider->getRouteByName($collection_route_by_developer_name)),
+      $collection_route_by_developer_name,
+      ['user' => $route_match->getParameter('user')->id()]
+    ));
+  }
+}
+
+/**
+ * Implements hook_entity_base_field_info().
+ */
+function apigee_edge_entity_base_field_info(EntityTypeInterface $entity_type) {
+  $fields = [];
+
+  if ($entity_type->id() === 'user') {
+    $fields['first_name'] = BaseFieldDefinition::create('string')
+      ->setLabel(t('First name'))
+      ->setDescription(t('Your first name.'))
+      ->setSetting('max_length', 32)
+      ->setRequired(TRUE)
+      ->setInitialValue('Firstname')
+      ->setDisplayOptions('form', [
+        'type' => 'string_textfield',
+        'weight' => '-11',
+        'settings' => [
+          'display_label' => TRUE,
+        ],
+      ])
+      ->setDisplayConfigurable('form', TRUE);
+
+    $fields['last_name'] = BaseFieldDefinition::create('string')
+      ->setLabel(t('Last name'))
+      ->setDescription(t('Your last name.'))
+      ->setSetting('max_length', 32)
+      ->setRequired(TRUE)
+      ->setInitialValue('Lastname')
+      ->setDisplayOptions('form', [
+        'type' => 'string_textfield',
+        'weight' => '-11',
+        'settings' => [
+          'display_label' => TRUE,
+        ],
+      ])
+      ->setDisplayConfigurable('form', TRUE);
+
+    $fields['apigee_edge_developer_id'] = BaseFieldDefinition::create('string')
+      ->setName('apigee_edge_developer_id')
+      ->setLabel(t('Apigee Edge Developer ID'))
+      ->setComputed(TRUE)
+      ->setClass(ApigeeEdgeDeveloperIdFieldItem::class);
+  }
+
+  return $fields;
+}
+
+/**
+ * Implements hook_entity_base_field_info_alter().
+ */
+function apigee_edge_entity_base_field_info_alter(&$fields, EntityTypeInterface $entity_type) {
+  /** @var \Drupal\Core\Field\FieldDefinitionInterface[] $fields */
+  if ($entity_type->id() === 'user') {
+    /** @var \Drupal\Core\Field\BaseFieldDefinition $mail */
+    $mail = $fields['mail'];
+    $mail->setRequired(TRUE);
+    $mail->addConstraint('DeveloperMailUnique');
+  }
+}
+
+/**
+ * Implements hook_entity_extra_field_info().
+ */
+function apigee_edge_entity_extra_field_info() {
+  $extra = [];
+  foreach (\Drupal::entityTypeManager()->getDefinitions() as $definition) {
+    if (in_array(AppInterface::class, class_implements($definition->getOriginalClass()))) {
+      // Bundles are not supported therefore both keys are the same.
+      $extra[$definition->id()][$definition->id()]['display']['credentials'] = [
+        'label' => new TranslatableMarkup('Credentials'),
+        'description' => new TranslatableMarkup('Displays credentials provided by a @label', ['@label' => $definition->getSingularLabel()]),
+        // By default it should be displayed in the end of the view.
+        'weight' => 100,
+        'visible' => TRUE,
+      ];
+    }
+  }
+  return $extra;
+}
+
+/**
+ * Implements hook_field_formatter_info_alter().
+ */
+function apigee_edge_field_formatter_info_alter(array &$info) {
+  // Allows using the 'uri_link' formatter for the 'app_callback_url'
+  // field type, which uses it as default formatter.
+  // @see \Drupal\apigee_edge\Plugin\Field\FieldType\AppCallbackUrlItem
+  $info['uri_link']['field_types'][] = 'app_callback_url';
+}
+
+/**
+ * Implements hook_entity_view().
+ */
+function apigee_edge_entity_view(array &$build, EntityInterface $entity, EntityViewDisplayInterface $display, $view_mode) {
+  if ($entity instanceof AppInterface) {
+    if ($build['#view_mode'] === 'full') {
+      // Add some required assets to an app's full entity view mode.
+      $build['#attached']['library'][] = 'apigee_edge/apigee_edge.components';
+      $build['#attached']['library'][] = 'apigee_edge/apigee_edge.app_view';
+    }
+
+    if ($display->getComponent('credentials')) {
+      /** @var \Drupal\apigee_edge\Entity\AppInterface $entity */
+      $defaults = [
+        '#cache' => [
+          'contexts' => $entity->getCacheContexts(),
+          'tags' => $entity->getCacheTags(),
+        ],
+      ];
+      $build['credentials'] = [
+        '#type' => 'container',
+      ];
+      foreach ($entity->getCredentials() as $credential) {
+        $build['credentials'][] = [
+          '#type' => 'app_credential',
+          '#credential' => $credential,
+          '#attributes' => [
+            'class' => 'items--inline',
+          ],
+        ] + $defaults;
+      }
+    }
+  }
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_access().
+ *
+ * Supported operations: view, view label, assign.
+ *
+ * "assign" is a custom entity on API Products. It is being used on app
+ * create/edit forms. A developer may have view access to an API product but
+ * they can not assign it to an app (they can not obtain an API key for that
+ * API product).
+ *
+ * Rules:
+ * - The user gets allowed if has "Bypass API Product access control"
+ * permission always.
+ * - If operation is "view" or "view label" then the user gets access allowed
+ * for the API Product (entity) if the API product's access attribute value is
+ * either one of the selected access attribute values OR if a developer
+ * app is in association with the selected API product.
+ * - If operation is "assign" then second part of the previous sentence does
+ * not apply only access attribute's value matters.
+ */
+function apigee_edge_api_product_access(EntityInterface $entity, $operation, AccountInterface $account) {
+  /** @var \Drupal\apigee_edge\Entity\ApiProductInterface $entity */
+  if (!in_array($operation, ['view', 'view label', 'assign'])) {
+    return AccessResult::neutral(sprintf('%s is not supported by %s.', $operation, __FUNCTION__));
+  }
+
+  $config_name = 'apigee_edge.api_product_settings';
+
+  $result = AccessResult::allowedIfHasPermission($account, 'bypass api product access control');
+  if ($result->isNeutral()) {
+    // Attribute may not exists but in that case it means public.
+    $product_visibility = $entity->getAttributeValue('access') ?? 'public';
+    $visible_to_roles = \Drupal::config($config_name)->get('access')[$product_visibility] ?? [];
+
+    // A user may not have access to this API product based on the current
+    // access setting but we should still grant view access
+    // if they have a developer app in association with this API product.
+    if (empty(array_intersect($visible_to_roles, $account->getRoles()))) {
+      // We should not return allowed if the operation is "assign"
+      // just because a user has an app with the API product.
+      // Displaying these API products to a user should be solved on the
+      // form level always.
+      if ($operation === 'assign') {
+        $result = AccessResult::neutral();
+      }
+      else {
+        $result = _apigee_edge_user_has_an_app_with_product($entity->id(), $account, TRUE);
+      }
+    }
+    else {
+      $result = AccessResult::allowed();
+    }
+  }
+
+  // If the API product gets updated it should not have any effect this
+  // access control so we did not add $entity as a dependency to the result.
+  return $result->cachePerUser()->addCacheTags(['config:' . $config_name]);
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function apigee_edge_form_entity_form_display_edit_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+  if ($form['#entity_type'] === 'developer_app') {
+    $form['#validate'][] = '_apigee_edge_developer_app_entity_form_display_edit_form_validate';
+  }
+}
+
+/**
+ * Extra validation for the entity_form_display.edit form of developer apps.
+ *
+ * This makes sure that fields marked as 'required' can't be disabled.
+ *
+ * @param array $form
+ *   Form array.
+ * @param Drupal\Core\Form\FormStateInterface $form_state
+ *   Form state.
+ */
+function _apigee_edge_developer_app_entity_form_display_edit_form_validate(array &$form, FormStateInterface $form_state) {
+  $required = \Drupal::config('apigee_edge.developer_app_settings')->get('required_base_fields');
+
+  foreach ($form_state->getValue('fields') as $field_name => $data) {
+    if (in_array($field_name, $required) && $data['region'] === 'hidden') {
+      $form_state->setError($form['fields'][$field_name], t('%field-name is required.', [
+        '%field-name' => $form['fields'][$field_name]['human_name']['#plain_text'],
+      ]));
+    }
+  }
+}
+
+/**
+ * After build callback for verification email content form element.
+ *
+ * @param array $form_element
+ *   Form element array.
+ * @param Drupal\Core\Form\FormStateInterface $form_state
+ *   Form state object.
+ *
+ * @return array
+ *   Form array.
+ *
+ * @see \Drupal\apigee_edge\Form\DeveloperSettingsForm::buildForm
+ */
+function apigee_edge_developer_settings_form_verification_email_body_after_build(array $form_element, FormStateInterface $form_state) {
+  if (isset($form_element['format'])) {
+    // Hide input format settings when textarea itself is also hidden.
+    $form_element['format']['#states']['visible'] = $form_element['#states']['visible'];
+  }
+  return $form_element;
+}
+
+/**
+ * Implements hook_mail().
+ *
+ * Based on user_mail().
+ */
+function apigee_edge_mail($key, &$message, $params) {
+  $token_service = \Drupal::token();
+  $language_manager = \Drupal::languageManager();
+  $langcode = $message['langcode'];
+  /** @var \Drupal\Core\Session\AccountInterface $account */
+  $account = $params['account'];
+  $variables = ['user' => $account];
+
+  $language = $language_manager->getLanguage($account->getPreferredLangcode());
+  $original_language = $language_manager->getConfigOverrideLanguage();
+  $language_manager->setConfigOverrideLanguage($language);
+  $config = \Drupal::config('apigee_edge.developer_settings');
+
+  $token_options = [
+    'langcode' => $langcode,
+    'callback' => '_apigee_edge_existing_developer_mail_tokens',
+    'clear' => TRUE,
+  ];
+  $message['subject'] .= PlainTextOutput::renderFromHtml($token_service->replace($config->get('verification_email.subject'), $variables, $token_options));
+  $message['body'][] = $token_service->replace($config->get('verification_email.body'), $variables, $token_options);
+
+  $language_manager->setConfigOverrideLanguage($original_language);
+}
+
+/**
+ * Token callback to add unsafe tokens for existing developer user mails.
+ *
+ * This function is used by \Drupal\Core\Utility\Token::replace() to set up
+ * some additional tokens that can be used in email messages generated by
+ * apigee_edge_mail().
+ *
+ * @param array $replacements
+ *   An associative array variable containing mappings from token names to
+ *   values (for use with strtr()).
+ * @param array $data
+ *   An associative array of token replacement values. If the 'user' element
+ *   exists, it must contain a user account object with the following
+ *   properties:
+ *   - login: The UNIX timestamp of the user's last login.
+ *   - pass: The hashed account login password.
+ * @param array $options
+ *   A keyed array of settings and flags to control the token replacement
+ *   process. See \Drupal\Core\Utility\Token::replace().
+ */
+function _apigee_edge_existing_developer_mail_tokens(array &$replacements, array $data, array $options) {
+  if (isset($data['user'])) {
+    $replacements['[user:developer-email-verification-url]'] = _apigee_edge_existing_developer_email_verification_link($data['user'], $options);
+  }
+}
+
+/**
+ * Sends a verification email to the developer email that is already taken.
+ *
+ * @param \Drupal\Core\Session\AccountInterface $account
+ *   The user object of the account being notified. Must contain at
+ *   least the fields 'uid', 'name', and 'mail'.
+ * @param string $langcode
+ *   (optional) Language code to use for the notification, overriding account
+ *   language.
+ *
+ * @return array
+ *   An array containing various information about the message.
+ *   See \Drupal\Core\Mail\MailManagerInterface::mail() for details.
+ *
+ * @see \_apigee_edge_existing_developer_mail_tokens()
+ */
+function _apigee_edge_send_developer_email_verification_email(AccountInterface $account, $langcode = NULL) {
+  if (\Drupal::config('apigee_edge.developer_settings')->get('verification_action') === DeveloperSettingsForm::VERIFICATION_ACTION_VERIFY_EMAIL) {
+    $params['account'] = $account;
+    $langcode = $langcode ? $langcode : $account->getPreferredLangcode();
+    // Get the custom site notification email to use as the from email address
+    // if it has been set.
+    $site_mail = \Drupal::config('system.site')->get('mail_notification');
+    // If the custom site notification email has not been set, we use the site
+    // default for this.
+    if (empty($site_mail)) {
+      $site_mail = \Drupal::config('system.site')->get('mail');
+    }
+    if (empty($site_mail)) {
+      $site_mail = ini_get('sendmail_from');
+    }
+    $mail = \Drupal::service('plugin.manager.mail')->mail('apigee_edge', 'developer_email_verification', $account->getEmail(), $langcode, $params, $site_mail);
+    // TODO Should we notify admins about this?
+  }
+  return empty($mail) ? NULL : $mail['result'];
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function apigee_edge_form_user_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+  // Only alter the user edit form.
+  if ($form_id === 'user_register_form') {
+    return;
+  }
+  // The email field should be always required because it is required on
+  // Apigee Edge.
+  $form['account']['mail']['#required'] = TRUE;
+  $user = \Drupal::currentUser();
+  // Make the same information available here as on user_register_form.
+  // @see \Drupal\user\RegisterForm::form()
+  $form['administer_users'] = [
+    '#type' => 'value',
+    '#value' => $user->hasPermission('administer users'),
+  ];
+
+  // Add the API connection custom validation callback to the beginning of the
+  // chain apigee_edge_module_implements_alter() ensures that form_alter hook is
+  // called in the last time.
+  $validation_functions[] = 'apigee_edge_form_user_form_api_connection_validate';
+  // Add email custom validation callback to the chain immediately after the API
+  // connection validation apigee_edge_module_implements_alter() ensures that
+  // form_alter hook is called in the last time.
+  $validation_functions[] = 'apigee_edge_form_user_form_developer_email_validate';
+  $form['#validate'] = array_merge($validation_functions, $form['#validate']);
+}
+
+/**
+ * Validates whether the provided email address is already taken on Apigee Edge.
+ *
+ * @param array $form
+ *   Form array.
+ * @param Drupal\Core\Form\FormStateInterface $form_state
+ *   Form state object.
+ */
+function apigee_edge_form_user_form_developer_email_validate(array $form, FormStateInterface $form_state) {
+  // If email address was changed.
+  if ($form_state->getValue('mail') !== $form_state->getBuildInfo()['callback_object']->getEntity()->mail->value) {
+    $developer = NULL;
+    try {
+      $developer = Developer::load($form_state->getValue('mail'));
+    }
+    catch (\Exception $exception) {
+      // Nothing to do here, if there is no connection to Apigee Edge interrupt
+      // the registration in the
+      // apigee_edge_form_user_form_api_connection_validate() function.
+    }
+
+    if ($developer) {
+      // Add email address to the whitelist because we would like to
+      // display a custom error message instead of what this
+      // field validation handler returns.
+      DeveloperEmailUniqueValidator::whitelist($form_state->getValue('mail'));
+      if ($form_state->getValue('administer_users')) {
+        $form_state->setErrorByName('mail', t('This email address already belongs to a developer on Apigee Edge.'));
+      }
+      else {
+        $config = Drupal::config('apigee_edge.developer_settings');
+        $form_state->setErrorByName('mail', $config->get('user_edit_error_message.value'));
+      }
+    }
+  }
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function apigee_edge_form_user_register_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+  $validation_functions = [];
+  // The email field should be always required because it is required on
+  // Apigee Edge.
+  $form['account']['mail']['#required'] = TRUE;
+  // Add the API connection custom validation callback to the beginning of the
+  // chain apigee_edge_module_implements_alter() ensures that form_alter hook is
+  // called in the last time.
+  $validation_functions[] = 'apigee_edge_form_user_form_api_connection_validate';
+  $userInput = $form_state->getUserInput();
+  // Because this form alter is called earlier than the validation callback
+  // (and the entity validations by user module) we have to use raw
+  // user input here to check whether this form element should be visible
+  // next time when the form is displayed on the UI with validation errors.
+  if (!empty($userInput['mail']) && $form['account']['mail']['#default_value'] !== $userInput['mail']) {
+    // Only add our extra features to the form if the provided email does not
+    // belong to a user in Drupal yet. Otherwise let Drupal's build-in
+    // validation to handle this problem.
+    $user = user_load_by_mail($userInput['mail']);
+    if (!$user) {
+      // Add email custom validation callback to the chain immediately after the
+      // API connection validation apigee_edge_module_implements_alter() ensures
+      // that form_alter hook is called in the last time.
+      $validation_functions[] = 'apigee_edge_form_user_register_form_developer_email_validate';
+
+      try {
+        $developer = Developer::load($userInput['mail']);
+        $form['developer_exists'] = [
+          '#type' => 'value',
+          '#value' => (bool) $developer,
+        ];
+        if ($developer) {
+          if ($form['administer_users']['#value']) {
+            $form['account']['apigee_edge_developer_exists'] = [
+              '#type' => 'checkbox',
+              '#title' => t('I understand the provided email address belongs to a developer on Apigee Edge and I confirm user creation'),
+              '#required' => TRUE,
+              '#weight' => 0,
+            ];
+          }
+          else {
+            $config = Drupal::config('apigee_edge.developer_settings');
+            if ($config->get('verification_action') === DeveloperSettingsForm::VERIFICATION_ACTION_VERIFY_EMAIL) {
+              $form['account']['apigee_edge_developer_unreceived_mail'] = [
+                '#type' => 'checkbox',
+                '#title' => t('I did not get an email. Please send me a new one.'),
+                '#weight' => 0,
+              ];
+            }
+          }
+        }
+      }
+      catch (\Exception $exception) {
+        // Nothing to do here, if there is no connection to Apigee Edge
+        // Nothing to do here, if there is no connection to Apigee Edge
+        // interrupt the registration in the
+        // apigee_edge_form_user_form_api_connection_validate() function.
+      }
+    }
+  }
+
+  $form['#validate'] = array_merge($validation_functions, $form['#validate']);
+  $form['#after_build'][] = 'apigee_edge_form_user_register_form_after_build';
+}
+
+/**
+ * After build function for user_registration_form.
+ *
+ * @param array $form
+ *   Form array.
+ * @param Drupal\Core\Form\FormStateInterface $form_state
+ *   Form state object.
+ *
+ * @return array
+ *   Form array.
+ */
+function apigee_edge_form_user_register_form_after_build(array $form, FormStateInterface $form_state) {
+  if (isset($form['account']['apigee_edge_developer_exists']) && isset($form['account']['mail'])) {
+    $form['account']['apigee_edge_developer_exists']['#weight'] = $form['account']['mail']['#weight'] + 0.0001;
+  }
+  if (isset($form['account']['apigee_edge_developer_unreceived_mail']) && isset($form['account']['mail'])) {
+    $form['account']['apigee_edge_developer_unreceived_mail']['#weight'] = $form['account']['mail']['#weight'] + 0.0001;
+  }
+  return $form;
+}
+
+/**
+ * Validates whether there is connection to Apigee Edge or not.
+ *
+ * @param array $form
+ *   Form array.
+ * @param Drupal\Core\Form\FormStateInterface $form_state
+ *   Form state object.
+ */
+function apigee_edge_form_user_form_api_connection_validate(array $form, FormStateInterface $form_state) {
+  // If there is no connection to Apigee Edge interrupt the registration/user
+  // update, otherwise it could be a security leak if a developer exists in
+  // Apigee Edge with the same email address.
+  /** @var \Drupal\apigee_edge\SDKConnectorInterface $sdk_connector */
+  $sdk_connector = \Drupal::service('apigee_edge.sdk_connector');
+  try {
+    $sdk_connector->testConnection();
+  }
+  catch (\Exception $exception) {
+    $context = [
+      '@user_email' => $form_state->getValue('mail'),
+      '@message' => (string) $exception,
+    ];
+    watchdog_exception('apigee_edge', $exception, 'Could not create/update Drupal user: @user_email, because there was no connection to Apigee Edge. @message %function (line %line of %file). <pre>@backtrace_string</pre>', $context);
+    $form_state->setError($form, t('User registration is temporarily unavailable. Try again later or contact the site administrator.'));
+  }
+}
+
+/**
+ * Validates whether the provided email address is already taken on Apigee Edge.
+ *
+ * @param array $form
+ *   Form array.
+ * @param Drupal\Core\Form\FormStateInterface $form_state
+ *   Form state object.
+ */
+function apigee_edge_form_user_register_form_developer_email_validate(array $form, FormStateInterface $form_state) {
+  // Do nothing if the developer does not exists.
+  if (empty($form_state->getValue('developer_exists'))) {
+    return;
+  }
+
+  /** @var \Drupal\user\RegisterForm $registerForm */
+  $registerForm = $form_state->getFormObject();
+  // Pass this information to hook_user_presave() in case if we would get
+  // there.
+  $registerForm->getEntity()->{APIGEE_EDGE_USER_REGISTRATION_SOURCE} = 'user_register_form';
+  // Do nothing if user has administer users permission.
+  // (Form is probably displayed on admin/people/create.)
+  if ($form_state->getValue('administer_users')) {
+    // Add email address to the whitelist because we do not want to
+    // display the same error message for an admin user as a regular user.
+    DeveloperEmailUniqueValidator::whitelist($form_state->getValue('mail'));
+    // If administrator has not confirmed that they would like to create a user
+    // in Drupal with an existing developer id on Apigee Edge then add a custom
+    // error to the field.
+    if (empty($form_state->getValue('apigee_edge_developer_exists'))) {
+      $form_state->setErrorByName('mail', t('This email address already exists on Apigee Edge.'));
+    }
+    return;
+  }
+
+  $config = \Drupal::config('apigee_edge.developer_settings');
+  $request = \Drupal::request();
+  $token = $request->query->get($config->get('verification_token'));
+  $timestamp = $request->query->get('timestamp');
+  /** @var \Drupal\user\UserInterface $account */
+  // Build user object from the submitted form values.
+  $account = $registerForm->buildEntity($form, $form_state);
+  // If required parameters are available in the url.
+  if ($token && $timestamp) {
+    // If token is (still) valid then account's email to the whitelist of the
+    // validator. This way it is not going to throw a validation error for this
+    // email this time.
+    if (apigee_edge_existing_developer_registration_hash_validate($account, $token, $timestamp)) {
+      DeveloperEmailUniqueValidator::whitelist($account->getEmail());
+      return;
+    }
+    else {
+      // Let user known that the token in the url has expired.
+      // Drupal sends a new verification email.
+      $form_state->setErrorByName('mail', t('Registration token expired or invalid. We have sent you a new link.'));
+    }
+  }
+
+  // Use shared storage to keep track of sent verification emails.
+  // Form state's storage can not be used for this purpose because its values
+  // are being cleared for every new requests. Private storage is too private
+  // in case of anonymous user because every page request creates a new, empty
+  // private temp storage.
+  $storage = \Drupal::service('tempstore.shared');
+  /** @var \Drupal\Core\TempStore\PrivateTempStore $sendNotifications */
+  $sendNotifications = $storage->get('apigee_edge_developer_email_verification_sent');
+  // Do not send multiple email verifications to the same email address
+  // every time when form validation fails with an error.
+  if (!$sendNotifications->get($account->getEmail()) || $form_state->getValue('apigee_edge_developer_unreceived_mail')) {
+    // Send verification email to the user.
+    $result = _apigee_edge_send_developer_email_verification_email($account, $account->getPreferredLangcode());
+    try {
+      $sendNotifications->set($account->getEmail(), $result);
+    }
+    catch (TempStoreException $e) {
+      watchdog_exception(__FUNCTION__, $e);
+    }
+  }
+}
+
+/**
+ * Generates an URL to confirm identity of a user with existing developer mail.
+ *
+ * Based on user_cancel_url().
+ *
+ * @param \Drupal\user\UserInterface $account
+ *   User object.
+ * @param array $options
+ *   (optional) A keyed array of settings. Supported options are:
+ *   - langcode: A language code to be used when generating locale-sensitive
+ *     URLs. If langcode is NULL the users preferred language is used.
+ *
+ * @return string
+ *   A unique URL that may be used to confirm the cancellation of the user
+ *   account.
+ *
+ * @see \_apigee_edge_existing_developer_mail_tokens()
+ * @see \Drupal\user\Controller\UserController::confirmCancel()
+ */
+function _apigee_edge_existing_developer_email_verification_link(UserInterface $account, array $options = []) {
+  $languageManager = \Drupal::languageManager();
+  $timestamp = \Drupal::time()->getRequestTime();
+  $langcode = isset($options['langcode']) ? $options['langcode'] : $account->getPreferredLangcode();
+  $url_options = ['absolute' => TRUE, 'language' => $languageManager->getLanguage($langcode)];
+  $url_options['query'][\Drupal::config('apigee_edge.developer_settings')->get('verification_token')] = apigee_edge_existing_developer_registration_hash($account, $timestamp);
+  $url_options['query']['timestamp'] = $timestamp;
+  // For now, use this method for generating url to the user register and
+  // edit forms.
+  $route = 'user.register';
+  $route_params = [];
+  if (!$account->isAnonymous()) {
+    $route = 'entity.user.edit_form';
+    $route_params['user'] = $account->id();
+  }
+  return Url::fromRoute($route, $route_params, $url_options)->toString();
+}
+
+/**
+ * Generates a token for an email address that is already taken on Apigee Edge.
+ *
+ * We do not want to enforce a user to use the same first name, last name,
+ * username when this token is generated and when they re-open the registration
+ * form by clicking on the link (that includes this token) from the verification
+ * email. Therefore we only use the email address for token generation.
+ *
+ * Based on user_pass_rehash().
+ *
+ * @param \Drupal\user\UserInterface $account
+ *   User object.
+ * @param string $timestamp
+ *   Timestamp for seed.
+ *
+ * @return string
+ *   Generated token.
+ */
+function apigee_edge_existing_developer_registration_hash(UserInterface $account, string $timestamp) {
+  $data = $account->getEmail();
+  $data .= $timestamp;
+  // TODO Should we increase entropy by generating a random value for an email
+  // address and temporary storing it with State API?
+  return Crypt::hmacBase64($data, Settings::getHashSalt());
+}
+
+/**
+ * Validates token for a registration with an existing developer email on Edge.
+ *
+ * @param \Drupal\user\UserInterface $account
+ *   User object.
+ * @param string $token
+ *   Generated token from the url.
+ * @param string $timestamp
+ *   Timestamp from url.
+ *
+ * @return bool
+ *   TRUE if token valid, false otherwise.
+ */
+function apigee_edge_existing_developer_registration_hash_validate(UserInterface $account, string $token, string $timestamp) {
+  $current = \Drupal::time()->getRequestTime();
+  $timeout = \Drupal::config('apigee_edge.developer_settings')->get('verification_token_expires');
+  if ($timestamp <= $current && $current - $timestamp < $timeout && Crypt::hashEquals($token, apigee_edge_existing_developer_registration_hash($account, $timestamp))) {
+    return TRUE;
+  }
+  return FALSE;
+}
+
+/**
+ * Prepares variables for app_credential_product_list templates.
+ *
+ * Default template: app-credential-product-list.html.twig.
+ *
+ * @param array $variables
+ *   An associative array containing:
+ *   - elements: An associative array containing the credential information.
+ *     Properties used:
+ *     - #credential_products: An \Apigee\Edge\Structure\CredentialProduct[]
+ *       array. Array of products included in an app credential.
+ *   - attributes: HTML attributes for the containing element.
+ */
+function template_preprocess_app_credential_product_list(array &$variables) {
+  /** @var \Apigee\Edge\Structure\CredentialProduct[] $cred_products */
+  $cred_products = $variables['elements']['#credential_products'];
+  $cred_product_ids = array_map(function ($product) {
+    /** @var \Apigee\Edge\Structure\CredentialProduct $product */
+    return $product->getApiproduct();
+  }, $cred_products);
+  /** @var \Drupal\apigee_edge\Entity\ApiProduct[] $allProducts */
+  $variables['#api_product_entities'] = $allProducts = ApiProduct::loadMultiple($cred_product_ids);
+  $variables += ['content' => []];
+  foreach ($cred_products as $product) {
+    if (!$allProducts[$product->getApiproduct()]->access('view label')) {
+      continue;
+    }
+    $value = '';
+    $indicator_status = '';
+    switch ($product->getStatus()) {
+      case CredentialProduct::STATUS_APPROVED:
+        $value = t('enabled');
+        $indicator_status = StatusPropertyElement::INDICATOR_STATUS_OK;
+        break;
+
+      case CredentialProduct::STATUS_REVOKED:
+        $value = t('disabled');
+        $indicator_status = StatusPropertyElement::INDICATOR_STATUS_ERROR;
+        break;
+
+      case CredentialProduct::STATUS_PENDING:
+        $value = t('pending');
+        $indicator_status = StatusPropertyElement::INDICATOR_STATUS_WARNING;
+        break;
+    }
+    $variables['content'][$product->getApiproduct()] = [
+      '#type' => 'container',
+      '#attributes' => ['class' => 'api-product-list-row clearfix'],
+      'label' => [
+        '#type' => 'html_tag',
+        '#tag' => 'span',
+        '#value' => $allProducts[$product->getApiproduct()]->getDisplayName(),
+        '#attributes' => ['class' => 'api-product-name'],
+      ],
+      'status' => [
+        '#type' => 'status_property',
+        '#value' => $value,
+        '#indicator_status' => $indicator_status,
+      ],
+    ];
+  }
+}
+
+/**
+ * Prepares variables for app_credential templates.
+ *
+ * Default template: app-credential.html.twig.
+ *
+ * @param array $variables
+ *   An associative array containing:
+ *   - elements: An associative array containing the credential information.
+ *     Properties used:
+ *     - #credential: A \Apigee\Edge\Api\Management\Entity\AppCredential object.
+ *       A developer app credential.
+ *   - attributes: HTML attributes for the containing element.
+ */
+function template_preprocess_app_credential(array &$variables) {
+  /** @var \Apigee\Edge\Api\Management\Entity\AppCredentialInterface $credential */
+  $credential = $variables['elements']['#credential'];
+  /** @var \Drupal\Core\Datetime\DateFormatterInterface $dateFormatter */
+  $dateFormatter = Drupal::service('date.formatter');
+  $serializer = new AppCredentialSerializer();
+  // Convert app entity to an array.
+  $normalized = (array) $serializer->normalize($credential);
+
+  $properties_in_primary = [
+    'consumerKey' => [
+      'label' => t('Consumer Key'),
+      'value_type' => 'plain',
+    ],
+    'consumerSecret' => [
+      'label' => t('Consumer Secret'),
+      'value_type' => 'plain',
+    ],
+    'issuedAt' => [
+      'label' => t('Issued'),
+      'value_type' => 'date',
+    ],
+    'expiresAt' => [
+      'label' => t('Expires'),
+      'value_type' => 'date',
+    ],
+    'status' => [
+      'label' => t('Key Status'),
+      'value_type' => 'status',
+    ],
+  ];
+
+  $secret_properties = [
+    'consumerKey',
+    'consumerSecret',
+  ];
+
+  $variables['primary_wrapper'] = [
+    '#type' => 'container',
+    '#attributes' => [
+      'class' => 'wrapper--primary',
+    ],
+  ];
+
+  foreach ($properties_in_primary as $property => $def) {
+    $variables['primary_wrapper'][$property] = [
+      '#type' => 'container',
+      '#attributes' => [
+        'class' => 'item-property',
+      ],
+    ];
+    $variables['primary_wrapper'][$property]['label'] = [
+      '#type' => 'label',
+      '#title' => $def['label'],
+      '#title_display' => 'before',
+    ];
+    $value = array_key_exists($property, $normalized) ? $normalized[$property] : NULL;
+    if ($def['value_type'] == 'date') {
+      // TODO Should we make format configurable?
+      /** @var \DateTimeInterface $value */
+      if ($value !== -1) {
+        $time_diff = \Drupal::time()->getRequestTime() - intval($value / 1000);
+        if ($time_diff > 0) {
+          $value = t('@time ago', ['@time' => $dateFormatter->formatTimeDiffSince(intval($value / 1000))]);
+        }
+        else {
+          $value = t('@time hence', ['@time' => $dateFormatter->formatTimeDiffUntil(intval($value / 1000))]);
+        }
+      }
+      else {
+        $value = t('Never');
+      }
+    }
+
+    // Below, $value is expected to be a string in some places, and it might be
+    // TranslatableMarkup or a string. If it is not a string, then in some
+    // cases warnings will be generated. This way it is always a string,
+    // removing ambiguity.
+    $value = (string) $value;
+
+    if (in_array($property, $secret_properties)) {
+      $variables['primary_wrapper'][$property]['value'] = [
+        '#type' => 'html_tag',
+        '#tag' => 'span',
+        '#attributes' => [
+          'class' => 'secret',
+          'data-secret-type' => $property,
+        ],
+        '#value' => Xss::filter($value),
+      ];
+    }
+    elseif ($def['value_type'] === 'status') {
+      $variables['primary_wrapper'][$property]['value'] = [
+        '#type' => 'status_property',
+        '#value' => $value,
+        '#indicator_status' => $value === AppCredentialInterface::STATUS_APPROVED ? StatusPropertyElement::INDICATOR_STATUS_OK : StatusPropertyElement::INDICATOR_STATUS_ERROR,
+      ];
+    }
+    else {
+      $variables['primary_wrapper'][$property]['value'] = [
+        '#markup' => Xss::filter($value),
+      ];
+    }
+  }
+
+  $variables['secondary_wrapper'] = [
+    '#type' => 'container',
+    '#attributes' => [
+      'class' => 'wrapper--secondary',
+    ],
+    'title' => [
+      '#type' => 'label',
+      '#title_display' => 'before',
+      '#title' => \Drupal::entityTypeManager()->getDefinition('api_product')->getPluralLabel(),
+    ],
+    'list' => [
+      '#type' => 'app_credential_product_list',
+      '#credential_products' => $credential->getApiProducts(),
+    ],
+  ];
+
+  // Helpful $content variable for templates.
+  $variables['content'] = $normalized;
+}
+
+/**
+ * Implements hook_user_presave().
+ *
+ * TODO Take (configurable?) actions if a user could not be saved in Drupal but
+ * it has been in Apigee Edge.
+ */
+function apigee_edge_user_presave(UserInterface $account) {
+  // If the developer-user synchronization is in progress, then saving
+  // developers while saving Drupal user should be avoided.
+  if (_apigee_edge_is_sync_in_progress()) {
+    return;
+  }
+
+  /** @var \Drupal\apigee_edge\UserDeveloperConverterInterface $user_developer */
+  $user_developer = \Drupal::service('apigee_edge.converter.user_developer');
+  /** @var \Drupal\apigee_edge\FieldAttributeConverterInterface $field_to_attribute */
+  $field_to_attribute = \Drupal::service('apigee_edge.converter.field_attribute');
+  /** @var \Drupal\Core\Logger\LoggerChannelInterface $logger */
+  $logger = \Drupal::service('logger.channel.apigee_edge');
+  try {
+    /** @var \Drupal\apigee_edge\Entity\Developer $developer */
+    $result = $user_developer->convertUser($account);
+    // There were no changes.
+    if ($result->getSuccessfullyAppliedChanges() === 0) {
+      return;
+    }
+    // Log problems occurred meanwhile the conversion process.
+    foreach ($result->getProblems() as $conversionProblem) {
+      $context = [
+        '%mail' => $account->getEmail(),
+        'link' => $account->toLink()->toString(),
+      ];
+      if ($conversionProblem instanceof UserDeveloperConversionUserFieldDoesNotExistException) {
+        $message = "Skipping %mail developer's %attribute_name attribute update because %field_name field does not exist.";
+        $context['%field_name'] = $conversionProblem->getFieldName();
+        $context['%attribute_name'] = $field_to_attribute->getAttributeName($conversionProblem->getFieldName());
+        $logger->warning($message, $context);
+      }
+      elseif ($conversionProblem instanceof UserDeveloperConversionNoStorageFormatterFoundException) {
+        $message = "Skipping %mail developer's %attribute_name attribute update because there is no available storage formatter for %field_type field type.";
+        $context['%field_type'] = $conversionProblem->getFieldDefinition()->getType();
+        $context['%attribute_name'] = $field_to_attribute->getAttributeName($conversionProblem->getFieldDefinition()->getName());
+        $logger->warning($message, $context);
+      }
+      else {
+        $logger->warning($conversionProblem->getMessage());
+      }
+    }
+    $developer = $result->getDeveloper();
+    $developer->save();
+  }
+  catch (\Exception $exception) {
+    $previous = $exception->getPrevious();
+    $context = [
+      '@developer' => $account->getEmail(),
+      '@message' => (string) $exception,
+      // UID 1 (created meanwhile the install process by config_installer) is
+      // not a new account.
+      // @see \Drupal\config_installer\Form\SiteConfigureForm::submitForm()
+      // Also, id() returns a string not an integer.
+      '@operation' => $account->isNew() || $account->id() == 1 ? 'create' : 'update',
+    ];
+    if ($previous instanceof ClientErrorException && $previous->getEdgeErrorCode()) {
+      if ($previous->getEdgeErrorCode() === Developer::APIGEE_EDGE_ERROR_CODE_DEVELOPER_DOES_NOT_EXISTS) {
+        \Drupal::service('logger.channel.apigee_edge')->info('Could not update @developer developer entity because it does not exist on Apigee Edge. Automatically trying to create a new developer entity.', $context);
+        try {
+          // Forcibly mark developer entity as new to send POST request to Edge
+          // instead of PUT. This should be a better way then clearing
+          // "originalEmail" property's value on the entity.
+          $developer->enforceIsNew(TRUE);
+          $developer->save();
+        }
+        catch (\Exception $exception) {
+          $context = [
+            '@developer' => $account->getEmail(),
+            '@message' => (string) $exception,
+          ];
+          $context += Error::decodeException($exception);
+          $logger->error('Could not create developer entity: @developer. @message %function (line %line of %file). <pre>@backtrace_string</pre>', $context);
+        }
+      }
+      elseif ($previous->getEdgeErrorCode() === Developer::APIGEE_EDGE_ERROR_CODE_DEVELOPER_ALREADY_EXISTS) {
+        $logger->info($previous->getMessage());
+        $developer = Developer::load($account->getEmail());
+        if ($developer) {
+          $developer_id = $developer->getDeveloperId();
+          // If a user could register on the portal with an email address
+          // that already belongs to a developer on Apigee Edge then override
+          // its stored developer data there with the new one.
+          if (isset($account->{APIGEE_EDGE_USER_REGISTRATION_SOURCE}) && $account->{APIGEE_EDGE_USER_REGISTRATION_SOURCE} === 'user_register_form') {
+            $developer = $user_developer->convertUser($account);
+            $developer->setDeveloperId($developer_id);
+            $developer->enforceIsNew(FALSE);
+            try {
+              $developer->save();
+            }
+            catch (ApiException $exception) {
+              $logger->error("Unable to update existing @developer developer's data after registered on the portal.", $context);
+            }
+          }
+        }
+        else {
+          $logger->error("Unable to save @developer developer's developer id on user.", $context);
+        }
+      }
+    }
+    else {
+      $context += Error::decodeException($exception);
+      $logger->error('Could not @operation developer entity: @developer. @message %function (line %line of %file). <pre>@backtrace_string</pre>', $context);
+    }
+  }
+}
+
+/**
+ * Implements hook_user_cancel().
+ */
+function apigee_edge_user_cancel(array $edit, UserInterface $account, $method) {
+  if ($method === 'user_cancel_block_unpublish' || $method === 'user_cancel_block') {
+    /** @var \Drupal\apigee_edge\UserDeveloperConverterInterface $user_developer */
+    $user_developer = \Drupal::service('apigee_edge.converter.user_developer');
+    /** @var \Drupal\Core\Logger\LoggerChannelInterface $logger */
+    $logger = \Drupal::service('logger.channel.apigee_edge');
+    try {
+      /** @var \Drupal\apigee_edge\Entity\Developer $developer */
+      $developer = $user_developer->convertUser($account)->getDeveloper();
+      $developer->save();
+    }
+    catch (\Exception $exception) {
+      $context = [
+        '@developer' => $account->getEmail(),
+        '@message' => (string) $exception,
+      ];
+      $context += Error::decodeException($exception);
+      $logger->error('Could not block @developer developer. @message %function (line %line of %file). <pre>@backtrace_string</pre>', $context);
+    }
+  }
+}
+
+/**
+ * Implements hook_user_cancel_methods_alter().
+ */
+function apigee_edge_user_cancel_methods_alter(&$methods) {
+  // Transform available keys to replacements that could be passed to t().
+  $get_replacements = function (array $method_info): array {
+    $replacements = [];
+    array_walk($method_info, function ($value, $key) use (&$replacements) {
+      $replacements["@{$key}"] = $value;
+    });
+
+    return $replacements;
+  };
+
+  // Returns extra information for a method that we would like to display.
+  // "title" is what a user with "administer users" permission can see,
+  // "description" is for regular authenticated users by default.
+  $get_extra_info = function (string $key, $replacements): ?array {
+    $extra_infos = [
+      'user_cancel_block' => [
+        'title' => t("@title Account's API credentials will be invalid until this account gets re-activated.", $replacements),
+        'description' => t('@description <strong>Your API credentials will be invalid until your account is unblocked.</strong>', $replacements),
+      ],
+      'user_cancel_delete' => [
+        'title' => t("@title <strong>All API apps and API credentials owned by this account will be deleted from Apigee Edge.</strong>", $replacements),
+        'description' => t('@description <strong>Your API apps and API credentials will be deleted permanently.</strong>', $replacements),
+      ],
+    ];
+
+    // The same warning should be displayed in these cancellation methods.
+    $extra_infos['user_cancel_block_unpublish'] = $extra_infos['user_cancel_block'];
+    $extra_infos['user_cancel_reassign'] = $extra_infos['user_cancel_delete'];
+
+    return $extra_infos[$key] ?? NULL;
+  };
+
+  foreach ($methods as $method => $info) {
+    $extra_info = $get_extra_info($method, $get_replacements($info));
+    if ($extra_info) {
+      $methods[$method] = array_merge($methods[$method], $extra_info);
+    }
+  }
+}
+
+/**
+ * Implements hook_user_delete().
+ */
+function apigee_edge_user_delete(UserInterface $account) {
+  // Do not try to delete developer of the anonymous user because it does
+  // not exist.
+  if ($account->isAnonymous()) {
+    return;
+  }
+
+  try {
+    /** @var \Drupal\apigee_edge\Entity\Developer $developer */
+    $developer = Developer::load($account->getEmail());
+    // Sanity check, the developer may not exist in Apigee Edge.
+    if ($developer) {
+      $developer->delete();
+    }
+  }
+  catch (\Exception $exception) {
+    $context = [
+      '@developer' => $account->getEmail(),
+      '@message' => (string) $exception,
+    ];
+    watchdog_exception('apigee_edge', $exception, 'Could not delete @developer developer entity. @message %function (line %line of %file). <pre>@backtrace_string</pre>', $context);
+  }
+}
+
+/**
+ * Implements hook_field_config_delete().
+ *
+ * Removes field name from the module's configuration after deleting the field.
+ */
+function apigee_edge_field_config_delete(EntityInterface $entity) {
+  /** @var \Drupal\field\FieldConfigInterface $entity */
+  $user_fields_to_sync = \Drupal::configFactory()
+    ->get('apigee_edge.sync')
+    ->get('user_fields_to_sync');
+
+  \Drupal::configFactory()
+    ->getEditable('apigee_edge.sync')
+    ->set('user_fields_to_sync', array_diff($user_fields_to_sync, [$entity->getName()]))
+    ->save();
+}
+
+/**
+ * Implements hook_form_field_ui_field_storage_add_form_alter().
+ */
+function apigee_edge_form_field_ui_field_storage_add_form_alter(array &$form, FormStateInterface &$form_state) {
+  if ($form_state->get('entity_type_id') === 'user') {
+    $form['apigee_edge_sync'] = [
+      '#type' => 'checkbox',
+      '#title' => t('Synchronize to Apigee Edge'),
+    ];
+    $form['#submit'][] = 'apigee_edge_field_ui_field_storage_add_form_submit';
+  }
+}
+
+/**
+ * Custom submit handler for field_ui_field_storage_add_form.
+ *
+ * @param array $form
+ *   An associative array containing the structure of the form.
+ * @param \Drupal\Core\Form\FormStateInterface $form_state
+ *   The current state of the form.
+ */
+function apigee_edge_field_ui_field_storage_add_form_submit(array &$form, FormStateInterface &$form_state) {
+  if ($form_state->getValue('apigee_edge_sync')) {
+    $user_fields_to_sync = \Drupal::configFactory()
+      ->get('apigee_edge.sync')
+      ->get('user_fields_to_sync');
+    $user_fields_to_sync[] = $form_state->getValue('field_name');
+
+    \Drupal::configFactory()
+      ->getEditable('apigee_edge.sync')
+      ->set('user_fields_to_sync', $user_fields_to_sync)
+      ->save();
+  }
+}
+
+/**
+ * Implements hook_key_delete().
+ */
+function apigee_edge_key_delete(EntityInterface $entity) {
+  /** @var \Drupal\key\KeyInterface $entity */
+  $active_key = \Drupal::configFactory()
+    ->get('apigee_edge.auth')
+    ->get('active_key');
+
+  if ($active_key === $entity->id()) {
+    \Drupal::configFactory()
+      ->getEditable('apigee_edge.auth')
+      ->set('active_key', '')
+      ->save();
+  }
+}
+
+/**
+ * Implements hook_cron().
+ */
+function apigee_edge_cron() {
+  /** @var \Drupal\apigee_edge\JobExecutor $executor */
+  $executor = \Drupal::service('apigee_edge.job_executor');
+  // Schedules 100 items from the job table.
+  // The reason of this is to avoid race conditions.
+  for ($i = 0; $i < 100; $i++) {
+    if (($job = $executor->select())) {
+      $executor->cast($job);
+    }
+    else {
+      break;
+    }
+  }
+}
+
+/**
+ * Returns the job executor instance.
+ *
+ * @return \Drupal\apigee_edge\JobExecutor
+ *   The job executor instance.
+ */
+function apigee_edge_get_executor(): JobExecutor {
+  return \Drupal::service('apigee_edge.job_executor');
+}
+
+/**
+ * Implements hook_preprocess_table().
+ */
+function apigee_edge_preprocess_table(&$variables) {
+  if (isset($variables['attributes']['id']) && $variables['attributes']['id'] === 'app-list') {
+    $variables['no_striping'] = TRUE;
+    $index = 0;
+
+    foreach ($variables['rows'] as $row) {
+      if ($row['attributes']->hasClass('row--info')) {
+        if (($index % 2 === 0)) {
+          $row['attributes']->addClass('odd');
+          $index++;
+        }
+        else {
+          $row['attributes']->addClass('even');
+          $index++;
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_storage_load().
+ *
+ * Set Drupal owner ids on developers after they were loaded from Apigee
+ * Edge.
+ */
+function apigee_edge_developer_storage_load(array $entities) {
+  $developerId_mail_map = [];
+  /** @var \Drupal\apigee_edge\Entity\Developer $entity */
+  foreach ($entities as $entity) {
+    $developerId_mail_map[$entity->getDeveloperId()] = $entity->getEmail();
+  }
+
+  $query = \Drupal::database()->select('users_field_data', 'ufd');
+  $query->fields('ufd', ['mail', 'uid'])
+    ->condition('mail', $developerId_mail_map, 'IN');
+  $mail_uid_map = $query->execute()->fetchAllKeyed();
+
+  foreach ($entities as $entity) {
+    // If developer id is not in this map it means the developer does not exist
+    // in Drupal yet (developer syncing between Apigee Edge and Drupal is
+    // required) or the developer id has not been stored in related Drupal user
+    // yet. This can be fixed with running developer sync too, because it could
+    // happen that the user had been created in Drupal before Apigee Edge
+    // connected was configured. Although, this could be a result of a previous
+    // error but there should be a log about that.
+    if (isset($mail_uid_map[$developerId_mail_map[$entity->getDeveloperId()]])) {
+      $entity->setOwnerId($mail_uid_map[$developerId_mail_map[$entity->getDeveloperId()]]);
+    }
+  }
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_storage_load().
+ *
+ * Set Drupal owner ids on developer apps after they were loaded from Apigee
+ * Edge.
+ */
+function apigee_edge_developer_app_storage_load(array $entities) {
+  $developer_ids = [];
+  /** @var \Drupal\apigee_edge\Entity\DeveloperApp $entity */
+  foreach ($entities as $entity) {
+    $developer_ids[] = $entity->getDeveloperId();
+  }
+  $developer_ids = array_unique($developer_ids);
+  $dev_id_mail_map = [];
+  /** @var \Drupal\apigee_edge\Entity\Storage\DeveloperStorageInterface $developer_storage */
+  $developer_storage = \Drupal::entityTypeManager()->getStorage('developer');
+  foreach ($developer_storage->loadByProperties(['developerId' => $developer_ids]) as $developer) {
+    /** @var \Drupal\apigee_edge\Entity\Developer $developer */
+    $dev_id_mail_map[$developer->uuid()] = $developer->getEmail();
+  }
+
+  // Sanity check, IN condition below should not be used with an empty array.
+  if (empty($dev_id_mail_map)) {
+    return;
+  }
+
+  // We load all users once with related found email addresses because
+  // \Drupal\apigee_edge\Entity\DeveloperApp::setOwnerId() would load them
+  // anyway but one by one. With this we warm up the user entity cache and
+  // User::load() will return all users from cache.
+  $userStorage = \Drupal::entityTypeManager()->getStorage('user');
+  $uids = $userStorage->getQuery()->condition('mail', $dev_id_mail_map, 'IN')->execute();
+  $users = $userStorage->loadMultiple($uids);
+
+  if ($dev_id_mail_map) {
+    $mail_developerId_map = array_flip($dev_id_mail_map);
+    foreach ($users as $user) {
+      if (array_key_exists($user->mail->value, $mail_developerId_map)) {
+        $mail_uid_map[$user->mail->value] = $user->id();
+      }
+    }
+  }
+  else {
+    $mail_uid_map = [];
+  }
+
+  foreach ($entities as $entity) {
+    // If developer id is not in this map it means the developer does not exist
+    // in Drupal yet (developer syncing between Apigee Edge and Drupal is
+    // required) or the developer id has not been stored in related Drupal user
+    // yet. This can be fixed by running developer sync. The reason is simple,
+    // it could happen that the user had been created in Drupal before Apigee
+    // Edge connected was configured. Although, this could be a result of a
+    // previous error but there should be a log about that.
+    if (isset($dev_id_mail_map[$entity->getDeveloperId()]) && isset($mail_uid_map[$dev_id_mail_map[$entity->getDeveloperId()]])) {
+      $entity->setOwnerId($mail_uid_map[$dev_id_mail_map[$entity->getDeveloperId()]]);
+    }
+  }
+}
+
+/**
+ * Checks whether a user has a developer app with an API product.
+ *
+ * We did not add static caching to this function because there could be
+ * possible scenarios when a cache invalidation issue could occur and this
+ * function would return a false-positive result.
+ *
+ * @param string $product_name
+ *   API Product name.
+ * @param \Drupal\Core\Session\AccountInterface|null $account
+ *   (optional) The user session for which to check access, or NULL to check
+ *   access for the current user. Defaults to NULL.
+ * @param bool $return_as_object
+ *   (optional) Defaults to FALSE.
+ *
+ * @return \Drupal\Core\Access\AccessResultInterface|bool
+ *   The access result. Returns a boolean if $return_as_object is FALSE (this
+ *   is the default) and otherwise an AccessResultInterface object.
+ *   When a boolean is returned, the result of AccessInterface::isAllowed() is
+ *   returned, i.e. TRUE means access is explicitly allowed, FALSE means
+ *   access is either explicitly forbidden or "no opinion".
+ *
+ * @see \Drupal\Core\Entity\EntityAccessControlHandlerInterface::access()
+ */
+function _apigee_edge_user_has_an_app_with_product(string $product_name, AccountInterface $account = NULL, bool $return_as_object = FALSE) {
+  if ($account === NULL) {
+    $account = \Drupal::currentUser();
+  }
+
+  if ($account->isAnonymous()) {
+    $result = AccessResult::neutral('Anonymous user does not have a developer account on Apigee Edge.');
+  }
+  else {
+    /** @var \Drupal\apigee_edge\Entity\DeveloperAppInterface|null $app_with_product */
+    $app_with_product = NULL;
+    /** @var \Drupal\apigee_edge\Entity\Storage\DeveloperAppStorageInterface $developer_app_storage */
+    $developer_app_storage = \Drupal::entityTypeManager()->getStorage('developer_app');
+
+    foreach ($developer_app_storage->loadByDeveloper($account->getEmail()) as $app) {
+      /** @var \Apigee\Edge\Api\Management\Entity\AppCredentialInterface $credential */
+      foreach ($app->getCredentials() as $credential) {
+        $product_ids = array_map(function (CredentialProduct $product) {
+          return $product->getApiproduct();
+        }, $credential->getApiProducts());
+        // We return after the first match to speed up the page load.
+        if (in_array($product_name, $product_ids)) {
+          $app_with_product = $app;
+          break 2;
+        }
+      }
+    }
+
+    if ($app_with_product) {
+      // Flush cache if this app gets updated. It could happen that
+      // this product gets removed from the app therefore the access
+      // must be re-evaluated.
+      $result = AccessResult::allowed()->cachePerUser()->addCacheTags($app_with_product->getCacheTags());
+    }
+    else {
+      $result = AccessResult::neutral("{$account->getDisplayName()} does not have any developer app in association with {$product_name} API product.");
+    }
+
+  }
+
+  return $return_as_object ? $result : $result->isAllowed();
+}
+
+/**
+ * Indicates that the developer-user synchronization is in progress.
+ *
+ * If the developer-user synchronization is in progress, then saving
+ * the same developer in apigee_edge_user_presave() while creating Drupal user
+ * based on a developer should be avoided.
+ *
+ * @param bool|null $in_progress
+ *   Developer-user synchronization state.
+ *
+ * @return bool
+ *   TRUE if the developer-user synchronization is in progress, else FALSE.
+ */
+function _apigee_edge_set_sync_in_progress(?bool $in_progress = NULL): bool {
+  static $state;
+  if ($in_progress !== NULL) {
+    $state = $in_progress;
+  }
+  return $state ?? FALSE;
+}
+
+/**
+ * Gets the developer synchronization state.
+ *
+ * @return bool
+ *   TRUE if the developer-user synchronization is in progress, else FALSE.
+ */
+function _apigee_edge_is_sync_in_progress(): bool {
+  return _apigee_edge_set_sync_in_progress();
+}
+
+/**
+ * Implements hook_cache_flush().
+ */
+function apigee_edge_cache_flush() {
+  // If OAuth token file does not exist this does not do anything.
+  \Drupal::service('apigee_edge.authentication.oauth_token_storage')->removeToken();
+}

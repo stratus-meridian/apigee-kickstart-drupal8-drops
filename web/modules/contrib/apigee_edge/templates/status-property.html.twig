@@ -1,0 +1,23 @@
+{#
+/**
+ * @file
+ * Default theme implementation to status_property_element.
+ *
+ * Available variables:
+ * - element: Element that will be rendered.
+ * - element['value'] : the status string.
+ *
+ * @ingroup themeable
+ */
+#}
+{%
+  set classes = [
+  'wrapper--status',
+  element.attributes.class
+  ]
+%}
+<span {{ attributes.addClass(classes) }}>
+  <span class="label-status">
+    {{ element.value|render|capitalize|t }}
+  </span>
+</span>

@@ -1,0 +1,43 @@
+sudo: required
+language: php
+
+php:
+- 5.6
+- 7.1
+
+git:
+  depth: 1
+
+services:
+- docker
+
+env:
+  global:
+  - DOCKER_COMPOSE_VERSION=1.17.1
+  matrix:
+  - DRUPAL_VERSION=~8.6
+  - DRUPAL_VERSION=~8.7
+  - DRUPAL_VERSION=8.8.x-dev
+
+matrix:
+  allow_failures:
+  - env: DRUPAL_VERSION=8.8.x-dev
+
+before_install:
+- cp docker-compose.yml.dist docker-compose.yml
+- docker-compose up -d
+
+install:
+- docker-compose exec -u root php composer require webflo/drupal-core-require-dev:$DRUPAL_VERSION --dev
+
+before_script:
+- docker-compose exec -u root php ./vendor/bin/run drupal:site-setup
+- sudo cp build/sites/default/default.settings.php build/sites/default/settings.php
+- sudo chmod -R a+w build
+
+script:
+- docker-compose exec php ./vendor/bin/grumphp run
+- docker-compose exec -u www-data php ./vendor/bin/phpunit
+
+notifications:
+  email: false

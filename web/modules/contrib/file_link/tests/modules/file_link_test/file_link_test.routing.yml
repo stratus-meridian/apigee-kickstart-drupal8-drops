@@ -1,0 +1,7 @@
+file_link_test.redirect:
+  path: '/test/redirect/{status}/{ext}'
+  defaults:
+    _title: 'Redirect to file'
+    _controller: '\Drupal\file_link_test\Controller\RedirectController::redirectToFile'
+  requirements:
+    _access: 'TRUE'
