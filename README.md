@@ -34,13 +34,13 @@ A custom, [Composer version of Drupal 8 for Apigee kickstarter](https://github.c
 Non-Drupal dependencies are downloaded to the `/vendor` directory.
 
 ## Installation
-Before we begin choose a machine-friendly site name. It should be all lower case with dashes instead of spaces. I'll use `my-apigee-devportal` but choose your own. Once you have a site name export it to a variable for re-use.
+Before we begin choose a machine-friendly site name. It should be all lower case with dashes instead of spaces. I'll use `d8-composer-no-ci` but choose your own. Once you have a site name export it to a variable for re-use.
 
 ## Creating the Pantheon Site
  1. Set env. variables
 
   ```bash
-export PANTHEON_SITE_NAME="my-apigee-devportal"
+export PANTHEON_SITE_NAME="your-portal-name"
 ```
 You should also be authenticated with Terminus. See the  [Authenticate into Terminus](https://pantheon.io/docs/machine-tokens/#authenticate-into-terminus)  section of the  [machine tokens documentation](https://pantheon.io/docs/machine-tokens)  for details.
 
@@ -115,6 +115,17 @@ terminus drush $PANTHEON_SITE_NAME.dev -- site-install apigee_devportal_kickstar
  3. Log in to your new Drupal 8 site to verify it is working. You can get a one-time login link using Drush:
  ```bash
 terminus drush $PANTHEON_SITE_NAME.dev -- uli
+```
+
+### Cleanup
+
+ 1. Before switching the connection mode to git, we have to commit our changes.
+ ```bash
+terminus env:commit $PANTHEON_SITE_NAME.dev
+```
+ 3. Now you can change your site connection mode to git
+```bash
+terminus connection:set $PANTHEON_SITE_NAME.dev git
 ```
 
 ## Updating your site
