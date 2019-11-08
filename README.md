@@ -53,6 +53,13 @@ terminus site:create $PANTHEON_SITE_NAME 'My Apigee Kickstart Dev Portal' empty
 ## Cloning this repo locally and deploying on Panthoen
 
  1. Clone the `example-drops-8-composer` repository locally:
+ ```bash
+git clone git@github.com:stratus-meridian/apigee-kickstart-drupal8-drops.git $PANTHEON_SITE_NAME
+```
+This command assumes you have [SSH keys](https://pantheon.io/docs/ssh-keys/) added to your GitHub account. If you don't, you can clone the repository over HTTPS:
+```bash
+git clone https://github.com/stratus-meridian/apigee-kickstart-drupal8-drops.git $PANTHEON_SITE_NAME
+```
  2. `cd` into the cloned directory:
  ```bash
 cd $PANTHEON_SITE_NAME
