@@ -30,9 +30,21 @@ use Psr\Http\Message\ResponseInterface;
  */
 interface ClientInterface extends HttpClient
 {
+    /**
+     * Default endpoint for Apigee Edge Public Cloud.
+     *
+     * @var string
+     */
     public const DEFAULT_ENDPOINT = 'https://api.enterprise.apigee.com/v1';
 
-    public const VERSION = '2.0.3';
+    /**
+     * Default endpoint for Apigee Edge Hybrid Cloud.
+     *
+     * @var string
+     */
+    public const HYBRID_ENDPOINT = 'https://apigee.googleapis.com/v1';
+
+    public const VERSION = '2.0.4';
 
     /**
      * Allows access to the last request, response and exception.

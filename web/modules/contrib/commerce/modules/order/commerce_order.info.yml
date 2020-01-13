@@ -22,15 +22,13 @@ config_devel:
     - core.entity_view_mode.commerce_order.user
     - core.entity_form_display.profile.customer.default
     - core.entity_view_display.profile.customer.default
-    - field.field.commerce_order.default.order_items
-    - field.storage.commerce_order.order_items
     - views.view.commerce_orders
     - views.view.commerce_order_item_table
     - views.view.commerce_user_orders
     - profile.type.customer
     - system.action.commerce_delete_order_action
 
-# Information added by Drupal.org packaging script on 2019-11-06
-version: '8.x-2.15'
+# Information added by Drupal.org packaging script on 2019-12-11
+version: '8.x-2.16'
 project: 'commerce'
-datestamp: 1573065191
+datestamp: 1576074190

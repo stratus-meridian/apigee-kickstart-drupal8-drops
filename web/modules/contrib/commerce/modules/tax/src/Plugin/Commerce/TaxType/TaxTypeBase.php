@@ -9,7 +9,6 @@ use Drupal\commerce_tax\Event\CustomerProfileEvent;
 use Drupal\commerce_tax\TaxableType;
 use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
-use Drupal\Core\Datetime\DrupalDateTime;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Plugin\PluginBase;
@@ -36,9 +35,19 @@ abstract class TaxTypeBase extends PluginBase implements TaxTypeInterface, Conta
   protected $eventDispatcher;
 
   /**
-   * The ID of the parent config entity.
+   * The parent config entity.
    *
    * Not available while the plugin is being configured.
+   *
+   * @var \Drupal\commerce_tax\Entity\TaxTypeInterface
+   */
+  protected $parentEntity;
+
+  /**
+   * The ID of the parent config entity.
+   *
+   * @deprecated in commerce:8.x-2.16 and is removed from commerce:3.x.
+   *   Use $this->>parentEntity->id() instead.
    *
    * @var string
    */
@@ -70,9 +79,10 @@ abstract class TaxTypeBase extends PluginBase implements TaxTypeInterface, Conta
 
     $this->entityTypeManager = $entity_type_manager;
     $this->eventDispatcher = $event_dispatcher;
-    if (array_key_exists('_entity_id', $configuration)) {
-      $this->entityId = $configuration['_entity_id'];
-      unset($configuration['_entity_id']);
+    if (array_key_exists('_entity', $configuration)) {
+      $this->parentEntity = $configuration['_entity'];
+      $this->entityId = $this->parentEntity->id();
+      unset($configuration['_entity']);
     }
     $this->setConfiguration($configuration);
   }
@@ -88,6 +98,32 @@ abstract class TaxTypeBase extends PluginBase implements TaxTypeInterface, Conta
       $container->get('entity_type.manager'),
       $container->get('event_dispatcher')
     );
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function __sleep() {
+    if (!empty($this->parentEntity)) {
+      $this->_parentEntityId = $this->parentEntity->id();
+      unset($this->parentEntity);
+    }
+    unset($this->profiles);
+
+    return parent::__sleep();
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function __wakeup() {
+    parent::__wakeup();
+
+    if (!empty($this->_parentEntityId)) {
+      $tax_type_storage = $this->entityTypeManager->getStorage('commerce_tax_type');
+      $this->parentEntity = $tax_type_storage->load($this->_parentEntityId);
+      unset($this->_parentEntityId);
+    }
   }
 
   /**
@@ -159,6 +195,13 @@ abstract class TaxTypeBase extends PluginBase implements TaxTypeInterface, Conta
   /**
    * {@inheritdoc}
    */
+  public function getWeight() {
+    return $this->pluginDefinition['weight'];
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public function isDisplayInclusive() {
     return !empty($this->configuration['display_inclusive']);
   }
@@ -168,28 +211,6 @@ abstract class TaxTypeBase extends PluginBase implements TaxTypeInterface, Conta
    */
   public function applies(OrderInterface $order) {
     return TRUE;
-  }
-
-  /**
-   * Gets the calculation date for the given order.
-   *
-   * Uses the placed timestamp, if the order has been placed.
-   * Falls back to the current date otherwise.
-   *
-   * @param \Drupal\commerce_order\Entity\OrderInterface $order
-   *   The order.
-   *
-   * @return \Drupal\Core\Datetime\DrupalDateTime
-   *   The calculation date.
-   */
-  protected function getCalculationDate(OrderInterface $order) {
-    if ($timestamp = $order->getPlacedTime()) {
-      $date = DrupalDateTime::createFromTimestamp($timestamp);
-    }
-    else {
-      $date = new DrupalDateTime();
-    }
-    return $date;
   }
 
   /**

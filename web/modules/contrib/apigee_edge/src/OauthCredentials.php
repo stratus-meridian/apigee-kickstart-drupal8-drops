@@ -26,6 +26,8 @@ use Http\Message\Authentication;
 
 /**
  * The API credentials for OAuth.
+ *
+ * @todo: move to \Drupal\apigee_edge\Connector namespace.
  */
 class OauthCredentials extends Credentials {
 

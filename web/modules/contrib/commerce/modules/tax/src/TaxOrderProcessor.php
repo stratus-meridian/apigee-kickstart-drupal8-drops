@@ -7,6 +7,7 @@ use Drupal\commerce_order\Entity\OrderItemInterface;
 use Drupal\commerce_order\OrderProcessorInterface;
 use Drupal\commerce_price\RounderInterface;
 use Drupal\commerce_store\Entity\StoreInterface;
+use Drupal\commerce_tax\Entity\TaxType;
 use Drupal\commerce_tax\Entity\TaxTypeInterface;
 use Drupal\commerce_tax\Plugin\Commerce\TaxType\LocalTaxTypeInterface;
 use Drupal\commerce_tax\Resolver\ChainTaxRateResolverInterface;
@@ -90,6 +91,7 @@ class TaxOrderProcessor implements OrderProcessorInterface {
     // when selling to customers outside the EU, but only if no other tax
     // was applied (e.g. a Japanese customer paying Japanese tax due to the
     // store being registered to collect tax there).
+    $calculation_date = $order->getCalculationDate();
     $store = $order->getStore();
     if ($store->get('prices_include_tax')->value) {
       foreach ($order->getItems() as $order_item) {
@@ -101,7 +103,7 @@ class TaxOrderProcessor implements OrderProcessorInterface {
           $unit_price = $order_item->getUnitPrice();
           $rates = $this->getDefaultRates($order_item, $store);
           foreach ($rates as $rate) {
-            $percentage = $rate->getPercentage();
+            $percentage = $rate->getPercentage($calculation_date);
             $tax_amount = $percentage->calculateTaxAmount($order_item->getUnitPrice(), TRUE);
             $tax_amount = $this->rounder->round($tax_amount);
             $unit_price = $unit_price->subtract($tax_amount);
@@ -207,6 +209,7 @@ class TaxOrderProcessor implements OrderProcessorInterface {
     if (empty($this->taxTypes)) {
       $tax_type_storage = $this->entityTypeManager->getStorage('commerce_tax_type');
       $this->taxTypes = $tax_type_storage->loadByProperties(['status' => TRUE]);
+      uasort($this->taxTypes, [TaxType::class, 'sort']);
     }
 
     return $this->taxTypes;

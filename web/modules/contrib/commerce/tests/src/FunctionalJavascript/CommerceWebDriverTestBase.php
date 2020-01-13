@@ -5,7 +5,6 @@ namespace Drupal\Tests\commerce\FunctionalJavascript;
 use Drupal\commerce_price\Comparator\NumberComparator;
 use Drupal\commerce_price\Comparator\PriceComparator;
 use Drupal\commerce_store\StoreCreationTrait;
-use Drupal\FunctionalJavascriptTests\JSWebAssert;
 use Drupal\FunctionalJavascriptTests\WebDriverTestBase;
 use Drupal\Tests\block\Traits\BlockCreationTrait;
 use Drupal\Tests\commerce\Traits\CommerceBrowserTestTrait;
@@ -52,6 +51,11 @@ abstract class CommerceWebDriverTestBase extends WebDriverTestBase {
     'commerce_price',
     'commerce_store',
   ];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * A test user with administrative privileges.
@@ -109,6 +113,23 @@ abstract class CommerceWebDriverTestBase extends WebDriverTestBase {
   }
 
   /**
+   * Sets an input field's raw value.
+   *
+   * HTML5 date and time input elements use locale-specific formats,
+   * making it difficult to test across environments.
+   * Setting the value via JS allows us to bypass this and modify the underling
+   * value, which is always in a consistent format.
+   *
+   * @param string $name
+   *   The input element name.
+   * @param string $value
+   *   The value.
+   */
+  protected function setRawFieldValue($name, $value) {
+    $this->getSession()->executeScript("document.getElementsByName('{$name}')[0].value = '{$value}';");
+  }
+
+  /**
    * Asserts that the given address is rendered on the page.
    *
    * @param array $address
@@ -155,16 +176,6 @@ abstract class CommerceWebDriverTestBase extends WebDriverTestBase {
   protected function waitForAjaxToFinish() {
     $condition = "(0 === jQuery.active && 0 === jQuery(':animated').length)";
     $this->assertJsCondition($condition, 10000);
-  }
-
-  /**
-   * {@inheritdoc}
-   *
-   * @return \Drupal\FunctionalJavascriptTests\JSWebAssert
-   *   A new web-assert option for asserting the presence of elements with.
-   */
-  public function assertSession($name = NULL) {
-    return new JSWebAssert($this->getSession($name), $this->baseUrl);
   }
 
 }

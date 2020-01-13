@@ -71,6 +71,7 @@ return array(
     'GuzzleHttp\\' => array($vendorDir . '/guzzlehttp/guzzle/src'),
     'Grasmash\\YamlExpander\\' => array($vendorDir . '/grasmash/yaml-expander/src'),
     'Grasmash\\Expander\\' => array($vendorDir . '/grasmash/expander/src'),
+    'Firebase\\JWT\\' => array($vendorDir . '/firebase/php-jwt/src'),
     'Egulias\\EmailValidator\\' => array($vendorDir . '/egulias/email-validator/EmailValidator'),
     'Drush\\Internal\\' => array($vendorDir . '/drush/drush/src/internal-forks'),
     'Drush\\Commands\\radix\\' => array($baseDir . '/web/themes/contrib/radix/Commands/radix'),
@@ -80,6 +81,7 @@ return array(
     'Drupal\\Component\\' => array($baseDir . '/web/core/lib/Drupal/Component'),
     'DrupalComposer\\DrupalScaffold\\' => array($vendorDir . '/drupal-composer/drupal-scaffold/src'),
     'DrupalCodeGenerator\\' => array($vendorDir . '/chi-teck/drupal-code-generator/src'),
+    'Doctrine\\Persistence\\' => array($vendorDir . '/doctrine/persistence/lib/Doctrine/Persistence'),
     'Doctrine\\Common\\Lexer\\' => array($vendorDir . '/doctrine/lexer/lib/Doctrine/Common/Lexer'),
     'Doctrine\\Common\\Inflector\\' => array($vendorDir . '/doctrine/inflector/lib/Doctrine/Common/Inflector'),
     'Doctrine\\Common\\Collections\\' => array($vendorDir . '/doctrine/collections/lib/Doctrine/Common/Collections'),
@@ -98,7 +100,6 @@ return array(
     'CommerceGuys\\Intl\\' => array($vendorDir . '/commerceguys/intl/src'),
     'CommerceGuys\\Addressing\\' => array($vendorDir . '/commerceguys/addressing/src'),
     'Clue\\StreamFilter\\' => array($vendorDir . '/clue/stream-filter/src'),
-    'Brumann\\Polyfill\\' => array($vendorDir . '/brumann/polyfill-unserialize/src'),
     'Asm89\\Stack\\' => array($vendorDir . '/asm89/stack-cors/src/Asm89/Stack'),
     'Apigee\\Edge\\' => array($vendorDir . '/apigee/apigee-client-php/src'),
 );

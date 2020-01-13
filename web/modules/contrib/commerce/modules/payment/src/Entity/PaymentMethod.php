@@ -168,7 +168,7 @@ class PaymentMethod extends ContentEntityBase implements PaymentMethodInterface 
    * {@inheritdoc}
    */
   public function isReusable() {
-    return $this->get('reusable')->value;
+    return (bool) $this->get('reusable')->value;
   }
 
   /**
@@ -183,7 +183,7 @@ class PaymentMethod extends ContentEntityBase implements PaymentMethodInterface 
    * {@inheritdoc}
    */
   public function isDefault() {
-    return $this->get('is_default')->value;
+    return (bool) $this->get('is_default')->value;
   }
 
   /**
@@ -317,7 +317,8 @@ class PaymentMethod extends ContentEntityBase implements PaymentMethodInterface 
     // 'default' is a reserved SQL word, hence the 'is_' prefix.
     $fields['is_default'] = BaseFieldDefinition::create('boolean')
       ->setLabel(t('Default'))
-      ->setDescription(t("Whether this is the user's default payment method."));
+      ->setDescription(t("Whether this is the user's default payment method."))
+      ->setDefaultValue(FALSE);
 
     $fields['expires'] = BaseFieldDefinition::create('timestamp')
       ->setLabel(t('Expires'))

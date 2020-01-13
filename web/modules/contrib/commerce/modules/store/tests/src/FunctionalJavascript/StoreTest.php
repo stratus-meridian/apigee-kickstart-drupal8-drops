@@ -40,8 +40,7 @@ class StoreTest extends CommerceWebDriverTestBase {
     $this->assertSession()->fieldExists('mail[0][value]');
     $this->assertSession()->fieldExists('address[0][address][country_code]');
     $this->assertSession()->fieldExists('billing_countries[]');
-    $this->assertSession()->fieldExists('uid[0][target_id]');
-    $this->assertSession()->fieldExists('default');
+    $this->assertSession()->fieldExists('is_default[value]');
 
     $this->getSession()->getPage()->fillField('address[0][address][country_code]', 'US');
     $this->getSession()->wait(4000, 'jQuery(\'select[name="address[0][address][administrative_area]"]\').length > 0 && jQuery.active == 0;');
@@ -51,6 +50,7 @@ class StoreTest extends CommerceWebDriverTestBase {
       'name[0][value]' => $name,
       'mail[0][value]' => \Drupal::currentUser()->getEmail(),
       'default_currency' => 'USD',
+      'timezone' => 'UTC',
     ];
     $address = [
       'address_line1' => '1098 Alta Ave',
@@ -64,8 +64,6 @@ class StoreTest extends CommerceWebDriverTestBase {
     }
     $this->submitForm($edit, t('Save'));
     $this->assertSession()->pageTextContains("Saved the $name store.");
-    $store_count = $this->getSession()->getPage()->findAll('css', '.view-commerce-stores tr td.views-field-name');
-    $this->assertEquals(2, count($store_count));
   }
 
   /**

@@ -10,6 +10,8 @@ use Drupal\Core\Entity\Entity\EntityFormDisplay;
 use Drupal\field\Entity\FieldConfig;
 use Drupal\field\Entity\FieldStorageConfig;
 use Drupal\Tests\TestFileCreationTrait;
+use Drupal\user\Entity\Role;
+use Drupal\user\RoleInterface;
 
 /**
  * Create, view, edit, delete, and change products.
@@ -173,8 +175,6 @@ class ProductAdminTest extends ProductBrowserTestBase {
       'variationType' => 'default',
     ];
     $product_type = $this->createEntity('commerce_product_type', $values);
-    commerce_product_add_stores_field($product_type);
-    commerce_product_add_variations_field($product_type);
 
     /** @var \Drupal\commerce_product\Entity\ProductInterface $second_product */
     $second_product = $this->createEntity('commerce_product', [
@@ -190,10 +190,9 @@ class ProductAdminTest extends ProductBrowserTestBase {
     ]);
 
     $this->drupalGet('admin/commerce/products');
-    $this->assertSession()->statusCodeEquals(200);
     $this->assertSession()->pageTextNotContains('You are not authorized to access this page.');
     $row_count = $this->getSession()->getPage()->findAll('xpath', '//table/tbody/tr');
-    $this->assertEquals(3, count($row_count), 'Table has 3 rows.');
+    $this->assertEquals(3, count($row_count));
 
     // Confirm that product titles are displayed.
     $page = $this->getSession()->getPage();
@@ -220,9 +219,8 @@ class ProductAdminTest extends ProductBrowserTestBase {
     // and receive a 403 error code.
     $this->drupalLogout();
     $this->drupalGet('admin/commerce/products');
-    $this->assertSession()->statusCodeEquals(403);
     $this->assertSession()->pageTextContains('You are not authorized to access this page.');
-    $this->assertNotEmpty(!$this->getSession()->getPage()->hasLink('Add product'));
+    $this->assertEmpty($this->getSession()->getPage()->hasLink('Add product'));
 
     // Login and confirm access for 'access commerce_product overview'
     // permission. The second product should no longer be visible because
@@ -230,11 +228,11 @@ class ProductAdminTest extends ProductBrowserTestBase {
     $user = $this->drupalCreateUser(['access commerce_product overview']);
     $this->drupalLogin($user);
     $this->drupalGet('admin/commerce/products');
-    $this->assertSession()->statusCodeEquals(200);
     $this->assertSession()->pageTextNotContains('You are not authorized to access this page.');
-    $this->assertNotEmpty(!$this->getSession()->getPage()->hasLink('Add product'));
+    $this->assertEmpty($this->getSession()->getPage()->hasLink('Add product'));
+
     $row_count = $this->getSession()->getPage()->findAll('xpath', '//table/tbody/tr');
-    $this->assertEquals(2, count($row_count), 'Table has 3 rows.');
+    $this->assertEquals(2, count($row_count));
 
     // Confirm that product titles are displayed.
     $page = $this->getSession()->getPage();
@@ -243,17 +241,38 @@ class ProductAdminTest extends ProductBrowserTestBase {
     $product_count = $page->findAll('xpath', '//table/tbody/tr/td/a[text()="Third product"]');
     $this->assertEquals(1, count($product_count), 'Third product is displayed.');
 
-    // Confirm that product types are displayed.
-    $product_count = $page->findAll('xpath', '//table/tbody/tr/td[starts-with(text(), "Default")]');
-    $this->assertEquals(1, count($product_count), 'Default product type exists in the table.');
-    $product_count = $page->findAll('xpath', '//table/tbody/tr/td[starts-with(text(), "Random")]');
-    $this->assertEquals(1, count($product_count), 'Random product type exist in the table.');
-
     // Confirm that the right product statuses are displayed.
     $product_count = $page->findAll('xpath', '//table/tbody/tr/td[starts-with(text(), "Unpublished")]');
     $this->assertEquals(0, count($product_count), 'Unpublished product do not exist in the table.');
     $product_count = $page->findAll('xpath', '//table/tbody/tr/td[starts-with(text(), "Published")]');
     $this->assertEquals(2, count($product_count), 'Published products exist in the table.');
+
+    // Confirm that product types are displayed.
+    $this->assertSession()->optionExists('edit-type', 'default');
+    $this->assertSession()->optionExists('edit-type', 'random');
+    $product_count = $page->findAll('xpath', '//table/tbody/tr/td[starts-with(text(), "Default")]');
+    $this->assertEquals(1, count($product_count));
+    $product_count = $page->findAll('xpath', '//table/tbody/tr/td[starts-with(text(), "Random")]');
+    $this->assertEquals(1, count($product_count));
+
+    // Confirm that the product type filter respects view access.
+    $authenticated_role = Role::load(RoleInterface::AUTHENTICATED_ID);
+    $authenticated_role->revokePermission('view commerce_product');
+    $authenticated_role->save();
+    $this->drupalGet('admin/commerce/products');
+    $this->assertSession()->pageTextContains('No products available');
+    $this->assertSession()->optionNotExists('edit-type', 'default');
+    $this->assertSession()->optionNotExists('edit-type', 'random');
+
+    $authenticated_role->grantPermission('view default commerce_product');
+    $authenticated_role->save();
+    $this->drupalGet('admin/commerce/products');
+    $this->assertSession()->optionExists('edit-type', 'default');
+    $this->assertSession()->optionNotExists('edit-type', 'random');
+    $product_count = $page->findAll('xpath', '//table/tbody/tr/td[starts-with(text(), "Default")]');
+    $this->assertEquals(1, count($product_count));
+    $product_count = $page->findAll('xpath', '//table/tbody/tr/td[starts-with(text(), "Random")]');
+    $this->assertEquals(0, count($product_count));
 
     // Login and confirm access for "view own unpublished commerce_product".
     $user = $this->drupalCreateUser([

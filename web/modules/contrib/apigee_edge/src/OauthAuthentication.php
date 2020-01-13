@@ -26,6 +26,8 @@ use Http\Message\Authentication\BasicAuth;
 
 /**
  * Decorator for OAuth authentication plugin.
+ *
+ * @todo: move to \Drupal\apigee_edge\Connector namespace.
  */
 class OauthAuthentication extends Oauth {
 
@@ -35,7 +37,7 @@ class OauthAuthentication extends Oauth {
   protected function authClient(): ClientInterface {
     /** @var \Drupal\apigee_edge\SDKConnectorInterface $sdk_connector */
     $sdk_connector = \Drupal::service('apigee_edge.sdk_connector');
-    return $sdk_connector->buildClient(new BasicAuth($this->clientId, $this->clientSecret), $this->auth_server);
+    return $sdk_connector->buildClient(new BasicAuth($this->clientId, $this->clientSecret), $this->getAuthServer());
   }
 
 }

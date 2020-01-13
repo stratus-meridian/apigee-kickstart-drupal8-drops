@@ -47,6 +47,8 @@ trait StoreCreationTrait {
       'uid' => 1,
       'name' => $name,
       'mail' => $mail,
+      'default_currency' => $currency,
+      'timezone' => 'Australia/Sydney',
       'address' => [
         'country_code' => $country,
         'address_line1' => $this->randomString(),
@@ -54,18 +56,10 @@ trait StoreCreationTrait {
         'administrative_area' => 'WI',
         'postal_code' => '53597',
       ],
-      'default_currency' => $currency,
-      'billing_countries' => [
-        $country,
-      ],
+      'billing_countries' => [$country],
+      'is_default' => $default,
     ]);
     $store->save();
-
-    if ($default) {
-      /** @var \Drupal\commerce_store\StoreStorage $store_storage */
-      $store_storage = \Drupal::service('entity_type.manager')->getStorage('commerce_store');
-      $store_storage->markAsDefault($store);
-    }
 
     $store = Store::load($store->id());
 

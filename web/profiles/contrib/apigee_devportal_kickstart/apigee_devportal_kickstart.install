@@ -34,6 +34,11 @@ use Drupal\menu_link_content\Entity\MenuLinkContent;
  * Implements hook_install_tasks().
  */
 function apigee_devportal_kickstart_install_tasks(&$install_state) {
+  // Initialize the seven theme and set it as active.
+  // This ensures the installation theme is maintained across tasks.
+  $theme = \Drupal::service('theme.initialization')->initTheme('seven');
+  \Drupal::theme()->setActiveTheme($theme);
+
   $tasks = [
     DemoInstallForm::class => [
       'display_name' => t('Install demo content'),
@@ -263,6 +268,33 @@ function apigee_devportal_kickstart_install() {
     'link' => ['uri' => 'internal:/forum'],
     'weight' => 3,
   ])->save();
+}
+
+/**
+ * Implements hook_requirements().
+ */
+function apigee_devportal_kickstart_requirements($phase) {
+  $requirements = [];
+
+  // Drupal 8.8.x requires pathauto >=8.x-1.6.
+  // Make sure this requirement is met.
+  if ($pathauto = Drupal::service('extension.list.module')->get('pathauto')) {
+    $current_version = $pathauto->info['version'];
+    $required_version = '8.x-1.6';
+    if (!version_compare($current_version, $required_version, '>=')) {
+      $requirements['apigee_devportal_kickstart_pathauto_version'] = [
+        'title' => t('Apigee Devportal Kickstart'),
+        'description' => t('Apigee Devportal Kickstart requires <a href=":url">Pathauto</a> <em>@required_version</em>. The current version is <em>@current_version</em>. Please update to the required version to ensure future compatibility.', [
+          ':url' => 'https://drupal.org/project/pathauto',
+          '@required_version' => $required_version,
+          '@current_version' => $current_version,
+        ]),
+        'severity' => REQUIREMENT_ERROR,
+      ];
+    }
+  }
+
+  return $requirements;
 }
 
 /**
