@@ -1,0 +1,66 @@
+<?php
+
+/**
+ * Copyright 2019 Google LLC
+ *
+ * This program is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License version 2 as published by the
+ * Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public
+ * License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc., 51
+ * Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ */
+
+use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\Core\Template\Attribute;
+
+/**
+ * Implements hook_help().
+ */
+function requirement_help($route_name, RouteMatchInterface $route_match) {
+  if ($route_name === 'requirement.report') {
+    return '<p>' . t('Here you can find a short overview of requirements and recommendations for this site.') . '</p>';
+  }
+}
+
+/**
+ * Implements hook_theme().
+ */
+function requirement_theme($existing, $type, $theme, $path) {
+  return [
+    'requirement_report' => [
+      'variables' => [
+        'requirement' => NULL,
+      ],
+    ],
+    'requirements_report_page' => [
+      'variables' => [
+        'requirement' => NULL,
+      ],
+    ],
+  ];
+}
+
+/**
+ * Preprocesses variables for the requirement-report template.
+ */
+function template_preprocess_requirement_report(&$variables) {
+  /** @var \Drupal\requirement\Plugin\RequirementInterface $requirement */
+  $requirement = $variables['requirement'];
+
+  $variables['attributes'] = new Attribute();
+  $variables['label'] = $requirement->getLabel();
+  $variables['description'] = $requirement->getDescription();
+  $variables['is_completed'] = $requirement->isCompleted();
+  $variables['severity'] = $requirement->getSeverity();
+  $variables['button'] = $requirement->getActionButton();
+
+  $variables['#attached']['library'][] = 'requirement/requirement_report';
+}
+

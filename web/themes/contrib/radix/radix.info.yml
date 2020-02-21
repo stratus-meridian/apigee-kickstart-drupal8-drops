@@ -30,7 +30,7 @@ component-libraries:
     paths:
       - ./src/components
 
-# Information added by Drupal.org packaging script on 2019-10-07
-version: '8.x-4.6'
+# Information added by Drupal.org packaging script on 2020-01-26
+version: '8.x-4.7'
 project: 'radix'
-datestamp: 1570446487
+datestamp: 1580057585

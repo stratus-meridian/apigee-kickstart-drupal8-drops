@@ -1,4 +1,1 @@
-#!/usr/bin/env php
-<?php
-
-require __DIR__ . '/drush.php';
+../drush/drush/drush

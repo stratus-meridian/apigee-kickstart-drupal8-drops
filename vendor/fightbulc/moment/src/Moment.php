@@ -760,7 +760,7 @@ class Moment extends \DateTime
      *
      * @return Moment
      */
-    private function addTime($type = 'day', $value = 1)
+    protected function addTime($type = 'day', $value = 1)
     {
         if ($this->immutableMode)
         {
@@ -1223,7 +1223,7 @@ class Moment extends \DateTime
      *
      * @return Moment
      */
-    private function setRawDateTimeString($rawDateTimeString)
+    protected function setRawDateTimeString($rawDateTimeString)
     {
         if ($this->immutableMode)
         {
@@ -1248,7 +1248,7 @@ class Moment extends \DateTime
      *
      * @return Moment
      */
-    private function setTimezoneString($timezoneString)
+    protected function setTimezoneString($timezoneString)
     {
         if ($this->immutableMode)
         {
@@ -1364,6 +1364,12 @@ class Moment extends \DateTime
             }
         }
 
+        // raw timestamp
+        elseif (strpos($rawDateTime, '@') === 0)
+        {
+            $momentDateTime = '@' . $this->format('U');
+        }
+
         // without time
         else
         {
@@ -1400,7 +1406,7 @@ class Moment extends \DateTime
      *
      * @return Moment
      */
-    private function subtractTime($type = 'day', $value = 1)
+    protected function subtractTime($type = 'day', $value = 1)
     {
         if ($this->immutableMode)
         {

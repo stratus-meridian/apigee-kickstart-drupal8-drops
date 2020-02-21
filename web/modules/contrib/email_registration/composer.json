@@ -30,5 +30,11 @@
     "support": {
         "issues": "http://drupal.org/project/issues/email_registration",
         "source": "http://cgit.drupalcode.org/email_registration"
+    },
+    "conflict": {
+        "drupal/commerce": "<2.12"
+    },
+    "require-dev": {
+        "drupal/commerce": "^2.0"
     }
 }
