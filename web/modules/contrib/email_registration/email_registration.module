@@ -122,7 +122,13 @@ function email_registration_cleanup_username($name) {
  * Implements hook_form_BASE_FORM_ID_alter().
  */
 function email_registration_form_user_form_alter(&$form, FormStateInterface $form_state) {
-  $form['account']['name']['#type'] = 'value';
+  $account = \Drupal::currentUser();
+  // Allow users to edit their own username or admins to do it if appropriate.
+  if (!$account->hasPermission('change own username') &&
+    !$account->hasPermission('administer users')) {
+    $form['account']['name']['#type'] = 'value';
+  }
+
   // Provide a random user name only if we are creating a new user, i.e. this
   // is a registration.
   if ($form_state->getFormObject()->getEntity()->isNew()) {

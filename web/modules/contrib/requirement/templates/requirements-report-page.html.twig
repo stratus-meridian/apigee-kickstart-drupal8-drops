@@ -1,0 +1,21 @@
+{#
+/**
+ * @file
+ * Template for requirement report page.
+ */
+#}
+{% for requirement in requirement %}
+  <fieldset>
+    <legend class="requirement-report_group__heading">{{ requirement.title }}</legend>
+    <p class="requirement-report_group__description">{{ requirement.description }}</p>
+    {% for severity in requirement.severities %}
+      {% if severity.requirement %}
+        <h3 class="requirement-report__heading">{{ severity.title }}</h3>
+
+        {% for requirement in severity.requirement %}
+          {{ requirement }}
+        {% endfor %}
+      {% endif %}
+    {% endfor %}
+  </fieldset>
+{% endfor %}
