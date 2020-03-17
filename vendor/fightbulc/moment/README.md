@@ -1,3 +1,9 @@
+# Support
+
+I am a dad now for the last 1,5 years and that clearly shows in being on time with merging PRs or pushing this package further.
+Time is the biggest constraint here. I would be happy to pass the project on to somebody who has more time and the motivation to push the project forward.
+Just drop me a message. Cheers!
+
 <pre>
                                       _           _           
  _ __ ___   ___  _ __ ___   ___ _ __ | |_   _ __ | |__  _ __  
@@ -7,7 +13,7 @@
                                            |_|         |_|    
 </pre>
 
-[![Build Status](https://travis-ci.org/fightbulc/moment.php.svg?branch=master)](https://travis-ci.org/fightbulc/moment.php)
+![Build Status](https://github.com/fightbulc/moment.php/workflows/qa/badge.svg?branch=master)
 [![Total Downloads](https://img.shields.io/packagist/dt/fightbulc/moment.svg?style=flat-square)](https://packagist.org/packages/fightbulc/moment)
 
 [Change log](#changelog)
@@ -106,10 +112,13 @@ __Supported languages so far:__
 ```cs_CZ``` Czech  
 ```da_DK``` Danish  
 ```nl_NL``` Dutch  
+```en_CA``` English (Canada)  
 ```en_GB``` English (British)  
 ```en_US``` English (American)  
+```fa_IR``` Farsi  
 ```fi_FI``` Finnish  
 ```fr_FR``` French (Europe)  
+```fr_CA``` French (Canada)  
 ```de_DE``` German (Germany)  
 ```hu_HU``` Hungarian    
 ```id_ID``` Indonesian  
@@ -414,6 +423,23 @@ You can now run through the result and put it formatted into a drop-down field o
 -------------------------------------------------
 
 # Change Log
+
+### 1.32.1
+ - fixed:
+    - DateTime::createFromFormat signature match
+
+### 1.32.0
+ - added:
+    - Farsi locale
+
+### 1.31.0
+ - added:
+    - code checks vis GH action workflows
+    - Canadian locale for English/French
+
+### 1.30.1
+ - fixed:
+    - merge with a couple of PRs (thanks!)
 
 ### 1.30.0
  - added:

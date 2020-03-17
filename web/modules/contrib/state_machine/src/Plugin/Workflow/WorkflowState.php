@@ -51,7 +51,7 @@ class WorkflowState {
    *   The translated label.
    */
   public function getLabel() {
-    return t($this->label, [], ['context' => 'workflow state']);
+    return (string) t($this->label, [], ['context' => 'workflow state']);
   }
 
   /**

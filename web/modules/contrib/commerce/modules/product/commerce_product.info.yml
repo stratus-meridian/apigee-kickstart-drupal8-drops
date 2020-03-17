@@ -2,7 +2,7 @@ name: Commerce Product
 type: module
 description: 'Defines the Product entity and associated features.'
 package: Commerce
-core: 8.x
+core_version_requirement: ^8.7.7 || ^9
 configure: commerce_product.configuration
 dependencies:
   - commerce:commerce
@@ -10,28 +10,8 @@ dependencies:
   - commerce:commerce_store
   - drupal:path
   - drupal:text
-config_devel:
-  install:
-    - commerce_product.commerce_product_type.default
-    - commerce_product.commerce_product_variation_type.default
-    - core.entity_form_display.commerce_product.default.default
-    - core.entity_view_display.commerce_product.default.default
-    - core.entity_form_display.commerce_product_variation.default.default
-    - field.storage.commerce_product.body
-    - field.field.commerce_product.default.body
-    - system.action.commerce_delete_product_action
-    - system.action.commerce_publish_product
-    - system.action.commerce_unpublish_product
-    - views.view.commerce_products
-  optional:
-    - commerce_order.commerce_order_item_type.default
-    - core.entity_form_display.commerce_order_item.product_variation.default
-    - core.entity_form_display.commerce_order_item.product_variation.add_to_cart
-    - core.entity_view_display.commerce_order_item.product_variation.default
-    - core.entity_view_display.commerce_product_variation.default.cart
-    - core.entity_view_mode.commerce_product_variation.cart
 
-# Information added by Drupal.org packaging script on 2019-12-11
-version: '8.x-2.16'
+# Information added by Drupal.org packaging script on 2020-02-28
+version: '8.x-2.17'
 project: 'commerce'
-datestamp: 1576074190
+datestamp: 1582923358

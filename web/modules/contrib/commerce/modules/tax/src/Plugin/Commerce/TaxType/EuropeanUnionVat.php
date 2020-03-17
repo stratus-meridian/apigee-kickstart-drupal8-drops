@@ -41,10 +41,7 @@ class EuropeanUnionVat extends LocalTaxTypeBase {
     /** @var \Drupal\address\AddressInterface $customer_address */
     $customer_address = $customer_profile->get('address')->first();
     $customer_country = $customer_address->getCountryCode();
-    $customer_zones = array_filter($zones, function ($zone) use ($customer_address) {
-      /** @var \Drupal\commerce_tax\TaxZone $zone */
-      return $zone->match($customer_address);
-    });
+    $customer_zones = $this->getMatchingZones($customer_address);
     if (empty($customer_zones)) {
       // The customer is not in the EU.
       return [];
@@ -53,10 +50,7 @@ class EuropeanUnionVat extends LocalTaxTypeBase {
     $store = $order->getStore();
     $store_address = $store->getAddress();
     $store_country = $store_address->getCountryCode();
-    $store_zones = array_filter($zones, function ($zone) use ($store_address) {
-      /** @var \Drupal\commerce_tax\TaxZone $zone */
-      return $zone->match($store_address);
-    });
+    $store_zones = $this->getMatchingZones($store_address);
     $store_registration_zones = array_filter($zones, function ($zone) use ($store) {
       /** @var \Drupal\commerce_tax\TaxZone $zone */
       return $this->checkRegistrations($store, $zone);
@@ -554,8 +548,8 @@ class EuropeanUnionVat extends LocalTaxTypeBase {
       'label' => $this->t('Greece'),
       'display_label' => $labels['vat'],
       'territories' => [
-        // Greece without Thassos, Samothrace, Skiros, Northern Sporades, Lesbos, Chios, The Cyclades, The Dodecanese.
-        ['country_code' => 'GR', 'excluded_postal_codes' => '/640 ?04|680 ?02|340 ?07|((370|811|821|840|851) ?[0-9]{2})/'],
+        // Greece without Leros, Lesbos, Kos, Samos, Chios.
+        ['country_code' => 'GR', 'excluded_postal_codes' => '/(811|821|831|853|854) ?[0-9]{2}/'],
       ],
       'rates' => [
         [
@@ -579,6 +573,39 @@ class EuropeanUnionVat extends LocalTaxTypeBase {
           'label' => $labels['reduced'],
           'percentages' => [
             ['number' => '0.06', 'start_date' => '2015-07-01'],
+          ],
+        ],
+      ],
+    ]);
+    $zones['gr_x'] = new TaxZone([
+      'id' => 'gr_x',
+      'label' => $this->t('Greek Islands (Leros, Lesbos, Kos, Samos, Chios)'),
+      'display_label' => $labels['vat'],
+      'territories' => [
+        // Leros, Lesbos, Kos, Samos, Chios.
+        ['country_code' => 'GR', 'included_postal_codes' => '/(811|821|831|853|854) ?[0-9]{2}/'],
+      ],
+      'rates' => [
+        [
+          'id' => 'standard',
+          'label' => $labels['standard'],
+          'percentages' => [
+            ['number' => '0.17', 'start_date' => '2016-06-01'],
+          ],
+          'default' => TRUE,
+        ],
+        [
+          'id' => 'intermediate',
+          'label' => $labels['intermediate'],
+          'percentages' => [
+            ['number' => '0.09', 'start_date' => '2011-01-01'],
+          ],
+        ],
+        [
+          'id' => 'reduced',
+          'label' => $labels['reduced'],
+          'percentages' => [
+            ['number' => '0.04', 'start_date' => '2015-07-01'],
           ],
         ],
       ],
@@ -1077,6 +1104,13 @@ class EuropeanUnionVat extends LocalTaxTypeBase {
           'label' => $labels['reduced'],
           'percentages' => [
             ['number' => '0.095', 'start_date' => '2013-07-01'],
+          ],
+        ],
+        [
+          'id' => 'super_reduced',
+          'label' => $labels['super_reduced'],
+          'percentages' => [
+            ['number' => '0.05', 'start_date' => '2020-01-01'],
           ],
         ],
       ],

@@ -57,10 +57,10 @@ class CurrencyForm extends EntityForm {
       '#title' => $this->t('Currency code'),
       '#default_value' => $currency->getCurrencyCode(),
       '#element_validate' => ['::validateCurrencyCode'],
-      '#pattern' => '[A-Z]+',
+      '#pattern' => '[A-Z]{3}',
       '#placeholder' => 'XXX',
-      '#maxlength' => 4,
-      '#size' => 5,
+      '#maxlength' => 3,
+      '#size' => 4,
       '#disabled' => !$currency->isNew(),
       '#required' => TRUE,
     ];
@@ -102,8 +102,8 @@ class CurrencyForm extends EntityForm {
   public function validateCurrencyCode(array $element, FormStateInterface $form_state, array $form) {
     $currency = $this->getEntity();
     $currency_code = $element['#value'];
-    if (!preg_match('/^[A-Z]+$/', $currency_code)) {
-      $form_state->setError($element, $this->t('The currency code must consist only of uppercase letters.'));
+    if (!preg_match('/^[A-Z]{3}$/', $currency_code)) {
+      $form_state->setError($element, $this->t('The currency code must consist of three uppercase letters.'));
     }
     elseif ($currency->isNew()) {
       $loaded_currency = $this->storage->load($currency_code);

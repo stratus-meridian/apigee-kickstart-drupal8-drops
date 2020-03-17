@@ -64,6 +64,8 @@ class TaxZoneTest extends CommerceKernelTestBase {
    * @covers ::getDisplayLabel
    * @covers ::getTerritories
    * @covers ::getRates
+   * @covers ::getRate
+   * @covers ::getDefaultRate
    * @covers ::match
    */
   public function testValid() {
@@ -94,7 +96,12 @@ class TaxZoneTest extends CommerceKernelTestBase {
     $this->assertCount(1, $zone->getTerritories());
     $this->assertEquals($definition['territories'][0]['country_code'], $zone->getTerritories()[0]->getCountryCode());
     $this->assertCount(1, $zone->getRates());
-    $this->assertEquals($definition['rates'][0]['id'], $zone->getRates()[0]->getId());
+    $this->assertArrayHasKey('standard', $zone->getRates());
+    $rate = $zone->getRates()['standard'];
+    $this->assertEquals($definition['rates'][0]['label'], $rate->getLabel());
+    $this->assertEquals($rate, $zone->getRate('standard'));
+    $this->assertNull($zone->getRate('reduced'));
+    $this->assertEquals($rate, $zone->getDefaultRate());
 
     $irish_address = new Address('IE');
     $serbian_address = new Address('RS');

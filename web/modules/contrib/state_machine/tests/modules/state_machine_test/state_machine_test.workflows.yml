@@ -27,7 +27,7 @@ default:
 
 validation:
   id: validation
-  label: Validatioj
+  label: Validation
   group: entity_test_with_bundle
   states:
     new:

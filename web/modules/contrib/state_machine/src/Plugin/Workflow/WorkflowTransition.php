@@ -71,7 +71,7 @@ class WorkflowTransition {
    *   The translated label.
    */
   public function getLabel() {
-    return t($this->label, [], ['context' => 'workflow transition']);
+    return (string) t($this->label, [], ['context' => 'workflow transition']);
   }
 
   /**

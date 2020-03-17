@@ -126,6 +126,7 @@ class ApigeeMonetizationConfigurationForm extends FormBase {
       }
     } catch (\Exception $exception) {
       watchdog_exception('apigee_kickstart', $exception);
+      $this->messenger()->addError($exception->getMessage());
     }
   }
 
@@ -151,21 +152,8 @@ class ApigeeMonetizationConfigurationForm extends FormBase {
    * {@inheritdoc}
    */
   public function buildForm(array $form, FormStateInterface $form_state) {
-    // Some messages stick around for installation tasks. Clear them all.
-    $this->messenger()->deleteAll();
-
+    $error_messages = [];
     $form['#title'] = $this->t('Configure monetization');
-
-    // Note that apigee_m10n is experimental.
-    $form['help'] = [
-      '#theme' => 'status_messages',
-      '#message_list' => [
-        MessengerInterface::TYPE_WARNING => [
-          $this->t('Note: Apigee Monetization in Kickstart is currently experimental.'),
-        ],
-      ],
-      '#weight' => -100,
-    ];
 
     $form['actions']['#type'] = 'actions';
     $form['actions']['submit'] = [
@@ -176,15 +164,21 @@ class ApigeeMonetizationConfigurationForm extends FormBase {
       '#limit_validation_errors' => [],
     ];
 
-    // If monetization is not enabled, show a message and continue.
+    // Check if monetization is not enabled.
     if (!$this->isMonetizable) {
+      $error_messages[MessengerInterface::TYPE_WARNING][] = $this->t('Monetization is not enabled for your organization');
+    }
+
+    // Check if the organization profile could not be loaded.
+    if (!$this->organization) {
+      $error_messages[MessengerInterface::TYPE_ERROR][] = $this->t('The organization profile could not be loaded. You can continue to the next step and manually setup monetization later.');
+    }
+
+    // Show error messages and continue.
+    if (count($error_messages)) {
       $form['message'] = [
         '#theme' => 'status_messages',
-        '#message_list' => [
-          MessengerInterface::TYPE_WARNING => [
-            $this->t('Monetization is not enabled for your organization'),
-          ],
-        ],
+        '#message_list' => $error_messages,
       ];
 
       return $form;
@@ -201,8 +195,8 @@ class ApigeeMonetizationConfigurationForm extends FormBase {
       '#description' => $this->t('Enable monetization for your Apigee Edge organization.'),
     ];
 
-    $form['modules']['apigee_kickstart_m10n_add_credit'] = [
-      '#title' => $this->t('Enable prepaid balance top up'),
+    $form['modules']['apigee_m10n_add_credit'] = [
+      '#title' => $this->t('Enable Add Credit module'),
       '#type' => 'checkbox',
       '#description' => $this->t('Allow users to add credit to their prepaid balances.'),
       '#states' => [
@@ -221,7 +215,7 @@ class ApigeeMonetizationConfigurationForm extends FormBase {
       '#states' => [
         'visible' => [
           'input[name="modules[apigee_m10n]"]' => ['checked' => TRUE],
-          'input[name="modules[apigee_kickstart_m10n_add_credit]"]' => ['checked' => TRUE],
+          'input[name="modules[apigee_m10n_add_credit]"]' => ['checked' => TRUE],
         ],
       ],
     ];
@@ -234,7 +228,7 @@ class ApigeeMonetizationConfigurationForm extends FormBase {
       '#default_value' => $site_config->get('name'),
       '#states' => [
         'required' => [
-          'input[name="modules[apigee_kickstart_m10n_add_credit]"]' => ['checked' => TRUE],
+          'input[name="modules[apigee_m10n_add_credit]"]' => ['checked' => TRUE],
         ],
       ],
     ];
@@ -247,7 +241,7 @@ class ApigeeMonetizationConfigurationForm extends FormBase {
       '#description' => $this->t('Store email notifications are sent from this address.'),
       '#states' => [
         'required' => [
-          'input[name="modules[apigee_kickstart_m10n_add_credit]"]' => ['checked' => TRUE],
+          'input[name="modules[apigee_m10n_add_credit]"]' => ['checked' => TRUE],
         ],
       ],
     ];
@@ -334,7 +328,7 @@ class ApigeeMonetizationConfigurationForm extends FormBase {
       '#states' => [
         'visible' => [
           'input[name="modules[apigee_m10n]"]' => ['checked' => TRUE],
-          'input[name="modules[apigee_kickstart_m10n_add_credit]"]' => ['checked' => TRUE],
+          'input[name="modules[apigee_m10n_add_credit]"]' => ['checked' => TRUE],
         ],
       ],
     ];
@@ -366,6 +360,26 @@ class ApigeeMonetizationConfigurationForm extends FormBase {
         '#default_value' => array_keys($currency_options),
       ];
     }
+
+    $form['payment_gateway'] = [
+      '#type' => 'details',
+      '#title' => $this->t('Payment Gateway'),
+      '#description' => $this->t('A payment gateway is needed during checkout for the "Add Credit" module.'),
+      '#open' => TRUE,
+      '#states' => [
+        'visible' => [
+          'input[name="modules[apigee_m10n]"]' => ['checked' => TRUE],
+          'input[name="modules[apigee_m10n_add_credit]"]' => ['checked' => TRUE],
+        ],
+      ],
+    ];
+
+    $form['payment_gateway']['gateway'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Create a test payment gateway'),
+      '#description' => $this->t('Create a manual payment gateway (useful for tests).'),
+      '#default_value' => TRUE,
+    ];
 
     $form['actions']['submit'] = [
       '#type' => 'submit',
@@ -411,12 +425,10 @@ class ApigeeMonetizationConfigurationForm extends FormBase {
     if (count($values['modules'])) {
 
       // Update the supported currencies.
+      $supported_currencies = empty($values['supported_currencies']) ? [] : array_keys(array_filter($values['supported_currencies']));
       $values['supported_currencies'] = [];
-      if (isset($values['supported_currencies'])) {
-        $supported_currencies = array_keys(array_filter($values['supported_currencies']));
-        foreach ($supported_currencies as $currency_code) {
-          $values['supported_currencies'][$currency_code] = $this->supportedCurrencies[strtolower($currency_code)];
-        }
+      foreach ($supported_currencies as $currency_code) {
+        $values['supported_currencies'][$currency_code] = $this->supportedCurrencies[strtolower($currency_code)];
       }
 
       // Convert state to state code.

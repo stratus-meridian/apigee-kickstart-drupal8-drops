@@ -3,14 +3,9 @@
 namespace Drupal\commerce_tax;
 
 use Drupal\commerce_order\Entity\OrderInterface;
-use Drupal\commerce_order\Entity\OrderItemInterface;
 use Drupal\commerce_order\OrderProcessorInterface;
 use Drupal\commerce_price\RounderInterface;
-use Drupal\commerce_store\Entity\StoreInterface;
 use Drupal\commerce_tax\Entity\TaxType;
-use Drupal\commerce_tax\Entity\TaxTypeInterface;
-use Drupal\commerce_tax\Plugin\Commerce\TaxType\LocalTaxTypeInterface;
-use Drupal\commerce_tax\Resolver\ChainTaxRateResolverInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 
 /**
@@ -33,32 +28,11 @@ class TaxOrderProcessor implements OrderProcessorInterface {
   protected $rounder;
 
   /**
-   * The chain tax rate resolver.
+   * The store tax.
    *
-   * @var \Drupal\commerce_tax\Resolver\ChainTaxRateResolverInterface
+   * @var \Drupal\commerce_tax\StoreTaxInterface
    */
-  protected $chainRateResolver;
-
-  /**
-   * The store's tax zones, keyed by store ID.
-   *
-   * @var array
-   */
-  protected $storeZones = [];
-
-  /**
-   * The loaded tax types.
-   *
-   * @var \Drupal\commerce_tax\Entity\TaxTypeInterface[]
-   */
-  protected $taxTypes = [];
-
-  /**
-   * A cache of instantiated store profiles.
-   *
-   * @var \Drupal\profile\Entity\ProfileInterface
-   */
-  protected $storeProfiles = [];
+  protected $storeTax;
 
   /**
    * Constructs a new TaxOrderProcessor object.
@@ -67,13 +41,13 @@ class TaxOrderProcessor implements OrderProcessorInterface {
    *   The entity type manager.
    * @param \Drupal\commerce_price\RounderInterface $rounder
    *   The rounder.
-   * @param \Drupal\commerce_tax\Resolver\ChainTaxRateResolverInterface $chain_rate_resolver
-   *   The chain tax rate resolver.
+   * @param \Drupal\commerce_tax\StoreTaxInterface $store_tax
+   *   The store tax.
    */
-  public function __construct(EntityTypeManagerInterface $entity_type_manager, RounderInterface $rounder, ChainTaxRateResolverInterface $chain_rate_resolver) {
+  public function __construct(EntityTypeManagerInterface $entity_type_manager, RounderInterface $rounder, StoreTaxInterface $store_tax) {
     $this->entityTypeManager = $entity_type_manager;
     $this->rounder = $rounder;
-    $this->chainRateResolver = $chain_rate_resolver;
+    $this->storeTax = $store_tax;
   }
 
   /**
@@ -101,7 +75,7 @@ class TaxOrderProcessor implements OrderProcessorInterface {
         });
         if (empty($tax_adjustments)) {
           $unit_price = $order_item->getUnitPrice();
-          $rates = $this->getDefaultRates($order_item, $store);
+          $rates = $this->storeTax->getDefaultRates($store, $order_item);
           foreach ($rates as $rate) {
             $percentage = $rate->getPercentage($calculation_date);
             $tax_amount = $percentage->calculateTaxAmount($order_item->getUnitPrice(), TRUE);
@@ -115,104 +89,18 @@ class TaxOrderProcessor implements OrderProcessorInterface {
   }
 
   /**
-   * Gets the default tax rates for the given order item and store.
-   *
-   * @param \Drupal\commerce_order\Entity\OrderItemInterface $order_item
-   *   The order item.
-   * @param \Drupal\commerce_store\Entity\StoreInterface $store
-   *   The store.
-   *
-   * @return \Drupal\commerce_tax\TaxRate[]
-   *   The tax rates, keyed by tax zone ID.
-   */
-  protected function getDefaultRates(OrderItemInterface $order_item, StoreInterface $store) {
-    $store_profile = $this->buildStoreProfile($store);
-    $rates = [];
-    foreach ($this->getStoreZones($store) as $zone) {
-      $rate = $this->chainRateResolver->resolve($zone, $order_item, $store_profile);
-      if (is_object($rate)) {
-        $rates[$zone->getId()] = $rate;
-      }
-    }
-
-    return $rates;
-  }
-
-  /**
-   * Gets the tax zones for the given store.
-   *
-   * @param \Drupal\commerce_store\Entity\StoreInterface $store
-   *   The store.
-   *
-   * @return \Drupal\commerce_tax\TaxZone[]
-   *   The tax zones.
-   */
-  protected function getStoreZones(StoreInterface $store) {
-    $store_id = $store->id();
-    if (!isset($this->storeZones[$store_id])) {
-      $tax_types = $this->getTaxTypes();
-      $tax_types = array_filter($tax_types, function (TaxTypeInterface $tax_type) {
-        $tax_type_plugin = $tax_type->getPlugin();
-        return ($tax_type_plugin instanceof LocalTaxTypeInterface) && $tax_type_plugin->isDisplayInclusive();
-      });
-
-      $this->storeZones[$store_id] = [];
-      $store_address = $store->getAddress();
-      foreach ($tax_types as $tax_type) {
-        /** @var \Drupal\commerce_tax\Plugin\Commerce\TaxType\LocalTaxTypeInterface $tax_type_plugin */
-        $tax_type_plugin = $tax_type->getPlugin();
-        foreach ($tax_type_plugin->getZones() as $zone) {
-          if ($zone->match($store_address)) {
-            $this->storeZones[$store_id][] = $zone;
-          }
-        }
-        // Assume that only a single tax type's zones will match.
-        if (count($this->storeZones[$store_id]) > 0) {
-          break;
-        }
-      }
-    }
-
-    return $this->storeZones[$store_id];
-  }
-
-  /**
-   * Builds a customer profile for the given store.
-   *
-   * @param \Drupal\commerce_store\Entity\StoreInterface $store
-   *   The store.
-   *
-   * @return \Drupal\profile\Entity\ProfileInterface
-   *   The customer profile.
-   */
-  protected function buildStoreProfile(StoreInterface $store) {
-    $store_id = $store->id();
-    if (!isset($this->storeProfiles[$store_id])) {
-      $profile_storage = $this->entityTypeManager->getStorage('profile');
-      $this->storeProfiles[$store_id] = $profile_storage->create([
-        'type' => 'customer',
-        'uid' => 0,
-        'address' => $store->getAddress(),
-      ]);
-    }
-
-    return $this->storeProfiles[$store_id];
-  }
-
-  /**
    * Gets the available tax types.
    *
    * @return \Drupal\commerce_tax\Entity\TaxTypeInterface[]
    *   The tax types.
    */
   protected function getTaxTypes() {
-    if (empty($this->taxTypes)) {
-      $tax_type_storage = $this->entityTypeManager->getStorage('commerce_tax_type');
-      $this->taxTypes = $tax_type_storage->loadByProperties(['status' => TRUE]);
-      uasort($this->taxTypes, [TaxType::class, 'sort']);
-    }
+    $tax_type_storage = $this->entityTypeManager->getStorage('commerce_tax_type');
+    /** @var \Drupal\commerce_tax\Entity\TaxTypeInterface[] $tax_types */
+    $tax_types = $tax_type_storage->loadByProperties(['status' => TRUE]);
+    uasort($tax_types, [TaxType::class, 'sort']);
 
-    return $this->taxTypes;
+    return $tax_types;
   }
 
 }

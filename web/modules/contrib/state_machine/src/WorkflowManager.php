@@ -26,6 +26,13 @@ class WorkflowManager extends DefaultPluginManager implements WorkflowManagerInt
   protected $groupManager;
 
   /**
+   * A cache of loaded workflows, keyed by workflow ID.
+   *
+   * @var \Drupal\state_machine\Plugin\Workflow\WorkflowInterface[]
+   */
+  protected $plugins;
+
+  /**
    * Default values for each workflow plugin.
    *
    * @var array
@@ -71,19 +78,22 @@ class WorkflowManager extends DefaultPluginManager implements WorkflowManagerInt
    * {@inheritdoc}
    */
   public function createInstance($plugin_id, array $configuration = []) {
-    $plugin_definition = $this->getDefinition($plugin_id);
-    if (empty($plugin_definition['group'])) {
-      throw new PluginException(sprintf('The workflow %s must define the group property.', $plugin_id));
-    }
-    $group_definition = $this->groupManager->getDefinition($plugin_definition['group']);
-    $plugin_class = $group_definition['workflow_class'];
+    if (empty($this->plugins[$plugin_id])) {
+      $plugin_definition = $this->getDefinition($plugin_id);
+      if (empty($plugin_definition['group'])) {
+        throw new PluginException(sprintf('The workflow %s must define the group property.', $plugin_id));
+      }
+      $group_definition = $this->groupManager->getDefinition($plugin_definition['group']);
+      $plugin_class = $group_definition['workflow_class'];
 
-    if (is_subclass_of($plugin_class, ContainerFactoryPluginInterface::class)) {
-      return $plugin_class::create(\Drupal::getContainer(), $configuration, $plugin_id, $plugin_definition);
+      if (is_subclass_of($plugin_class, ContainerFactoryPluginInterface::class)) {
+        $this->plugins[$plugin_id] = $plugin_class::create(\Drupal::getContainer(), $configuration, $plugin_id, $plugin_definition);
+      }
+      else {
+        $this->plugins[$plugin_id] = new $plugin_class($configuration, $plugin_id, $plugin_definition);
+      }
     }
-    else {
-      return new $plugin_class($configuration, $plugin_id, $plugin_definition);
-    }
+    return $this->plugins[$plugin_id];
   }
 
   /**

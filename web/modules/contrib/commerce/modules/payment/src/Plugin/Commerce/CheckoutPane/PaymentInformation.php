@@ -184,6 +184,7 @@ class PaymentInformation extends CheckoutPaneBase {
       $default_option = $this->paymentOptionsBuilder->selectDefaultOption($this->order, $options);
     }
 
+    $pane_form['#after_build'][] = [get_class($this), 'clearValues'];
     $pane_form['payment_method'] = [
       '#type' => 'radios',
       '#title' => $this->t('Payment method'),
@@ -301,6 +302,29 @@ class PaymentInformation extends CheckoutPaneBase {
   }
 
   /**
+   * Clears dependent form input when the payment_method changes.
+   *
+   * Without this Drupal considers the rebuilt form to already be submitted,
+   * ignoring default values.
+   */
+  public static function clearValues(array $element, FormStateInterface $form_state) {
+    $triggering_element = $form_state->getTriggeringElement();
+    if (!$triggering_element) {
+      return $element;
+    }
+    $triggering_element_name = end($triggering_element['#parents']);
+    if ($triggering_element_name == 'payment_method') {
+      $user_input = &$form_state->getUserInput();
+      $pane_input = NestedArray::getValue($user_input, $element['#parents']);
+      unset($pane_input['billing_information']);
+      unset($pane_input['add_payment_method']);
+      NestedArray::setValue($user_input, $element['#parents'], $pane_input);
+    }
+
+    return $element;
+  }
+
+  /**
    * {@inheritdoc}
    */
   public function validatePaneForm(array &$pane_form, FormStateInterface $form_state, array &$complete_form) {
@@ -369,11 +393,9 @@ class PaymentInformation extends CheckoutPaneBase {
           ]);
         }
         $billing_profile->populateFromProfile($payment_method_profile);
-        // The address_book_profile_id flag need to be transferred as well.
-        $address_book_profile_id = $payment_method_profile->getData('address_book_profile_id');
-        if ($address_book_profile_id) {
-          $billing_profile->setData('address_book_profile_id', $address_book_profile_id);
-        }
+        // The data field is not copied by default but needs to be.
+        // For example, both profiles need to have an address_book_profile_id.
+        $billing_profile->populateFromProfile($payment_method_profile, ['data']);
         $billing_profile->save();
         $this->order->setBillingProfile($billing_profile);
       }
