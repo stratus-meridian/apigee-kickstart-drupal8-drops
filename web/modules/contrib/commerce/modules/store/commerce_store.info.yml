@@ -2,23 +2,15 @@ name: Commerce Store
 type: module
 description: 'Defines the Store entity and associated features.'
 package: Commerce
-core: 8.x
+core_version_requirement: ^8.7.7 || ^9
 configure: entity.commerce_store.collection
 dependencies:
   - commerce:commerce
   - commerce:commerce_price
   - drupal:options
   - drupal:path
-config_devel:
-  install:
-    - commerce_store.commerce_store_type.online
-    - commerce_store.settings
-    - core.entity_form_display.commerce_store.online.default
-    - core.entity_view_display.commerce_store.online.default
-    - views.view.commerce_stores
-    - system.action.commerce_delete_store_action
 
-# Information added by Drupal.org packaging script on 2019-12-11
-version: '8.x-2.16'
+# Information added by Drupal.org packaging script on 2020-02-28
+version: '8.x-2.17'
 project: 'commerce'
-datestamp: 1576074190
+datestamp: 1582923358

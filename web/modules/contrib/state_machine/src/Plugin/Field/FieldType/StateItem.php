@@ -27,13 +27,6 @@ use Drupal\state_machine\Plugin\Workflow\WorkflowTransition;
 class StateItem extends FieldItemBase implements StateItemInterface, OptionsProviderInterface {
 
   /**
-   * A cache of loaded workflows, keyed by workflow ID.
-   *
-   * @var array
-   */
-  protected static $workflows = [];
-
-  /**
    * The original value, used to validate state changes.
    *
    * @var string
@@ -243,13 +236,12 @@ class StateItem extends FieldItemBase implements StateItemInterface, OptionsProv
     else {
       $workflow_id = $this->getSetting('workflow');
     }
-
-    if (!empty($workflow_id) && !isset(static::$workflows[$workflow_id])) {
-      $workflow_manager = \Drupal::service('plugin.manager.workflow');
-      static::$workflows[$workflow_id] = $workflow_manager->createInstance($workflow_id);
+    if (empty($workflow_id)) {
+      return FALSE;
     }
+    $workflow_manager = \Drupal::service('plugin.manager.workflow');
 
-    return isset(static::$workflows[$workflow_id]) ? static::$workflows[$workflow_id] : FALSE;
+    return $workflow_manager->createInstance($workflow_id);
   }
 
   /**

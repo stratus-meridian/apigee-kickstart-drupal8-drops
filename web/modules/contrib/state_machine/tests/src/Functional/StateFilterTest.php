@@ -13,17 +13,20 @@ use Drupal\Tests\BrowserTestBase;
 class StateFilterTest extends BrowserTestBase {
 
   /**
-   * Modules to enable.
-   *
-   * @var array
+   * {@inheritdoc}
    */
-  public static $modules = [
+  protected static $modules = [
     'entity_test',
     'options',
     'state_machine',
     'state_machine_test',
     'views',
   ];
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
 
   /**
    * {@inheritdoc}

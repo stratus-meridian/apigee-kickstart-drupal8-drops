@@ -7,6 +7,7 @@
 
 use Drupal\profile\Entity\ProfileType;
 use Drupal\Core\Entity\Entity\EntityFormDisplay;
+use Drupal\Core\Entity\Entity\EntityFormMode;
 use Drupal\field\Entity\FieldStorageConfig;
 
 /**
@@ -15,29 +16,12 @@ use Drupal\field\Entity\FieldStorageConfig;
 function commerce_order_post_update_1() {
   /** @var \Drupal\commerce\Config\ConfigUpdaterInterface $config_updater */
   $config_updater = \Drupal::service('commerce.config_updater');
-
-  $views = [
+  $result = $config_updater->revert([
     'views.view.commerce_order_item_table',
     'views.view.commerce_user_orders',
     'views.view.commerce_orders',
-  ];
-  $result = $config_updater->revert($views, FALSE);
-
-  $success_results = $result->getSucceeded();
-  $failure_results = $result->getFailed();
-  if ($success_results) {
-    $message = t('Succeeded:') . '<br>';
-    foreach ($success_results as $success_message) {
-      $message .= $success_message . '<br>';
-    }
-    $message .= '<br>';
-  }
-  if ($failure_results) {
-    $message .= t('Failed:') . '<br>';
-    foreach ($failure_results as $failure_message) {
-      $message .= $failure_message . '<br>';
-    }
-  }
+  ], FALSE);
+  $message = implode('<br>', $result->getFailed());
 
   return $message;
 }
@@ -64,29 +48,12 @@ function commerce_order_post_update_2() {
 function commerce_order_post_update_3() {
   /** @var \Drupal\commerce\Config\ConfigUpdaterInterface $config_updater */
   $config_updater = \Drupal::service('commerce.config_updater');
-
-  $views = [
+  $result = $config_updater->revert([
     'core.entity_view_display.commerce_order.default.default',
     'core.entity_view_display.commerce_order.default.user',
     'core.entity_view_display.profile.customer.default',
-  ];
-  $result = $config_updater->revert($views, FALSE);
-
-  $success_results = $result->getSucceeded();
-  $failure_results = $result->getFailed();
-  if ($success_results) {
-    $message = t('Succeeded:') . '<br>';
-    foreach ($success_results as $success_message) {
-      $message .= $success_message . '<br>';
-    }
-    $message .= '<br>';
-  }
-  if ($failure_results) {
-    $message .= t('Failed:') . '<br>';
-    foreach ($failure_results as $failure_message) {
-      $message .= $failure_message . '<br>';
-    }
-  }
+  ], FALSE);
+  $message = implode('<br>', $result->getFailed());
 
   return $message;
 }
@@ -97,28 +64,11 @@ function commerce_order_post_update_3() {
 function commerce_order_post_update_4() {
   /** @var \Drupal\commerce\Config\ConfigUpdaterInterface $config_updater */
   $config_updater = \Drupal::service('commerce.config_updater');
-
-  $views = [
+  $result = $config_updater->revert([
     'core.entity_view_display.commerce_order.default.default',
     'core.entity_view_display.commerce_order.default.user',
-  ];
-  $result = $config_updater->revert($views, FALSE);
-
-  $success_results = $result->getSucceeded();
-  $failure_results = $result->getFailed();
-  if ($success_results) {
-    $message = t('Succeeded:') . '<br>';
-    foreach ($success_results as $success_message) {
-      $message .= $success_message . '<br>';
-    }
-    $message .= '<br>';
-  }
-  if ($failure_results) {
-    $message .= t('Failed:') . '<br>';
-    foreach ($failure_results as $failure_message) {
-      $message .= $failure_message . '<br>';
-    }
-  }
+  ], FALSE);
+  $message = implode('<br>', $result->getFailed());
 
   return $message;
 }
@@ -129,27 +79,10 @@ function commerce_order_post_update_4() {
 function commerce_order_post_update_5() {
   /** @var \Drupal\commerce\Config\ConfigUpdaterInterface $config_updater */
   $config_updater = \Drupal::service('commerce.config_updater');
-
-  $views = [
+  $result = $config_updater->revert([
     'core.entity_form_display.commerce_order.default.default',
-  ];
-  $result = $config_updater->revert($views, FALSE);
-
-  $success_results = $result->getSucceeded();
-  $failure_results = $result->getFailed();
-  if ($success_results) {
-    $message = t('Succeeded:') . '<br>';
-    foreach ($success_results as $success_message) {
-      $message .= $success_message . '<br>';
-    }
-    $message .= '<br>';
-  }
-  if ($failure_results) {
-    $message .= t('Failed:') . '<br>';
-    foreach ($failure_results as $failure_message) {
-      $message .= $failure_message . '<br>';
-    }
-  }
+  ], FALSE);
+  $message = implode('<br>', $result->getFailed());
 
   return $message;
 }
@@ -179,27 +112,10 @@ function commerce_order_post_update_6() {
 function commerce_order_post_update_7() {
   /** @var \Drupal\commerce\Config\ConfigUpdaterInterface $config_updater */
   $config_updater = \Drupal::service('commerce.config_updater');
-
-  $views = [
+  $result = $config_updater->revert([
     'views.view.commerce_order_item_table',
-  ];
-  $result = $config_updater->revert($views);
-
-  $success_results = $result->getSucceeded();
-  $failure_results = $result->getFailed();
-  if ($success_results) {
-    $message = t('Succeeded:') . '<br>';
-    foreach ($success_results as $success_message) {
-      $message .= $success_message . '<br>';
-    }
-    $message .= '<br>';
-  }
-  if ($failure_results) {
-    $message .= t('Failed:') . '<br>';
-    foreach ($failure_results as $failure_message) {
-      $message .= $failure_message . '<br>';
-    }
-  }
+  ]);
+  $message = implode('<br>', $result->getFailed());
 
   return $message;
 }
@@ -255,30 +171,19 @@ function commerce_order_post_update_10() {
  * Add the "admin" view mode to profiles.
  */
 function commerce_order_post_update_11() {
+  if (!ProfileType::load('customer')) {
+    // Commerce expects the "customer" profile type to always be present,
+    // but some sites have still succeeded in removing it.
+    return '';
+  }
+
   /** @var \Drupal\commerce\Config\ConfigUpdaterInterface $config_updater */
   $config_updater = \Drupal::service('commerce.config_updater');
-
-  $config_names = [
+  $result = $config_updater->import([
     'core.entity_view_mode.profile.admin',
     'core.entity_view_display.profile.customer.admin',
-  ];
-  $result = $config_updater->import($config_names);
-
-  $success_results = $result->getSucceeded();
-  $failure_results = $result->getFailed();
-  if ($success_results) {
-    $message = t('Succeeded:') . '<br>';
-    foreach ($success_results as $success_message) {
-      $message .= $success_message . '<br>';
-    }
-    $message .= '<br>';
-  }
-  if ($failure_results) {
-    $message .= t('Failed:') . '<br>';
-    foreach ($failure_results as $failure_message) {
-      $message .= $failure_message . '<br>';
-    }
-  }
+  ]);
+  $message = implode('<br>', $result->getFailed());
 
   return $message;
 }
@@ -289,27 +194,28 @@ function commerce_order_post_update_11() {
 function commerce_order_post_update_12() {
   /** @var \Drupal\commerce\Config\ConfigUpdaterInterface $config_updater */
   $config_updater = \Drupal::service('commerce.config_updater');
-
-  $config_names = [
+  $result = $config_updater->import([
     'commerce_number_pattern.commerce_number_pattern.order_default',
-  ];
-  $result = $config_updater->import($config_names);
+  ]);
+  $message = implode('<br>', $result->getFailed());
 
-  $success_results = $result->getSucceeded();
-  $failure_results = $result->getFailed();
-  if ($success_results) {
-    $message = t('Succeeded:') . '<br>';
-    foreach ($success_results as $success_message) {
-      $message .= $success_message . '<br>';
-    }
-    $message .= '<br>';
+  return $message;
+}
+
+/**
+ * Create the "billing" form mode for profiles.
+ */
+function commerce_order_post_update_13() {
+  if (EntityFormMode::load('profile.billing')) {
+    return '';
   }
-  if ($failure_results) {
-    $message .= t('Failed:') . '<br>';
-    foreach ($failure_results as $failure_message) {
-      $message .= $failure_message . '<br>';
-    }
-  }
+
+  /** @var \Drupal\commerce\Config\ConfigUpdaterInterface $config_updater */
+  $config_updater = \Drupal::service('commerce.config_updater');
+  $result = $config_updater->import([
+    'core.entity_form_mode.profile.billing',
+  ]);
+  $message = implode('<br>', $result->getFailed());
 
   return $message;
 }

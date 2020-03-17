@@ -2,18 +2,13 @@ name: Commerce Cart
 type: module
 description: 'Implements the shopping cart system and add to cart features.'
 package: Commerce
-core: 8.x
+core_version_requirement: ^8.7.7 || ^9
 dependencies:
   - commerce:commerce
   - commerce:commerce_order
   - commerce:commerce_product
-config_devel:
-  install:
-    - core.entity_form_mode.commerce_order_item.add_to_cart
-    - views.view.commerce_cart_form
-    - views.view.commerce_carts
 
-# Information added by Drupal.org packaging script on 2019-12-11
-version: '8.x-2.16'
+# Information added by Drupal.org packaging script on 2020-02-28
+version: '8.x-2.17'
 project: 'commerce'
-datestamp: 1576074190
+datestamp: 1582923358
