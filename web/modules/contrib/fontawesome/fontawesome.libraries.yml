@@ -61,6 +61,15 @@ fontawesome.svg.brands:
   dependencies:
     - fontawesome/fontawesome.svg.base
 
+fontawesome.svg.duotone:
+  version: *fontawesome_version
+  license: *fontawesome_svg_license
+  header: true
+  js:
+    /libraries/fontawesome/js/duotone.min.js: { minified: true, attributes: { defer: true } }
+  dependencies:
+    - fontawesome/fontawesome.svg.base
+
 fontawesome.webfonts:
   remote: *fontawesome_remote
   license: &fontawesome_webfonts_license
@@ -112,6 +121,15 @@ fontawesome.webfonts.brands:
   css:
     theme:
       /libraries/fontawesome/css/brands.min.css: { minified: true }
+  dependencies:
+    - fontawesome/fontawesome.webfonts.base
+
+fontawesome.webfonts.duotone:
+  version: *fontawesome_version
+  license: *fontawesome_webfonts_license
+  css:
+    theme:
+      /libraries/fontawesome/css/duotone.min.css: { minified: true }
   dependencies:
     - fontawesome/fontawesome.webfonts.base
 

@@ -190,7 +190,7 @@ class FontAwesomeIconWidget extends WidgetBase implements ContainerFactoryPlugin
       '#default_value' => isset($iconSettings['pull']) ? $iconSettings['pull'] : '',
     ];
 
-    // Allow to use CSS Classes for any purpose eg background color
+    // Allow to use CSS Classes for any purpose eg background color.
     $element['settings']['additional_classes'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Additional Classes'),
