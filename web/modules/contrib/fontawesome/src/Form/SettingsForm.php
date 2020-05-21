@@ -172,6 +172,12 @@ class SettingsForm extends ConfigFormBase {
         '#description' => $this->t('Checking this box will cause the Font Awesome library to load the file containing the brands icon declarations (<i>brands.js/brands.css</i>)'),
         '#default_value' => is_null($fontawesome_config->get('use_brands_file')) === TRUE ? TRUE : $fontawesome_config->get('use_brands_file'),
       ],
+      'use_duotone_file' => [
+        '#type' => 'checkbox',
+        '#title' => $this->t('Load duotone icons'),
+        '#description' => $this->t('Checking this box will cause the Font Awesome library to load the file containing the duotone icon declarations (<i>duotone.js/duotone.css</i>)'),
+        '#default_value' => is_null($fontawesome_config->get('use_duotone_file')) === TRUE ? TRUE : $fontawesome_config->get('use_duotone_file'),
+      ],
     ];
 
     $form['shim'] = [
@@ -266,6 +272,7 @@ class SettingsForm extends ConfigFormBase {
       ->set('use_regular_file', $values['use_regular_file'])
       ->set('use_light_file', $values['use_light_file'])
       ->set('use_brands_file', $values['use_brands_file'])
+      ->set('use_duotone_file', $values['use_duotone_file'])
       ->save();
 
     parent::submitForm($form, $form_state);

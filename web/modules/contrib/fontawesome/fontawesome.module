@@ -233,24 +233,36 @@ function fontawesome_page_attachments(array &$page) {
     return;
   }
 
+  // Determine which files we are using.
+  $activeFiles = [
+    'use_solid_file' => is_null($configuration_settings->get('use_solid_file')) === TRUE ? TRUE : $configuration_settings->get('use_solid_file'),
+    'use_regular_file' => is_null($configuration_settings->get('use_regular_file')) === TRUE ? TRUE : $configuration_settings->get('use_regular_file'),
+    'use_light_file' => is_null($configuration_settings->get('use_light_file')) === TRUE ? TRUE : $configuration_settings->get('use_light_file'),
+    'use_brands_file' => is_null($configuration_settings->get('use_brands_file')) === TRUE ? TRUE : $configuration_settings->get('use_brands_file'),
+    'use_duotone_file' => is_null($configuration_settings->get('use_duotone_file')) === TRUE ? TRUE : $configuration_settings->get('use_duotone_file'),
+  ];
+
   // First check if we're using everything.
-  if (is_null($configuration_settings->get('use_solid_file')) === TRUE || ($configuration_settings->get('use_solid_file') && $configuration_settings->get('use_regular_file') && $configuration_settings->get('use_light_file') && $configuration_settings->get('use_brands_file'))) {
+  if (count(array_unique($activeFiles)) == 1) {
     // Attach the main library.
     $page['#attached']['library'][] = 'fontawesome/fontawesome.' . $configuration_settings->get('method');
   }
   // Else we attach the libraries piecemeal.
   else {
-    if ($configuration_settings->get('use_solid_file')) {
+    if ($activeFiles['use_solid_file']) {
       $page['#attached']['library'][] = 'fontawesome/fontawesome.' . $configuration_settings->get('method') . '.solid';
     }
-    if ($configuration_settings->get('use_regular_file')) {
+    if ($activeFiles['use_regular_file']) {
       $page['#attached']['library'][] = 'fontawesome/fontawesome.' . $configuration_settings->get('method') . '.regular';
     }
-    if ($configuration_settings->get('use_light_file')) {
+    if ($activeFiles['use_light_file']) {
       $page['#attached']['library'][] = 'fontawesome/fontawesome.' . $configuration_settings->get('method') . '.light';
     }
-    if ($configuration_settings->get('use_brands_file')) {
+    if ($activeFiles['use_brands_file']) {
       $page['#attached']['library'][] = 'fontawesome/fontawesome.' . $configuration_settings->get('method') . '.brands';
+    }
+    if ($activeFiles['use_duotone_file']) {
+      $page['#attached']['library'][] = 'fontawesome/fontawesome.' . $configuration_settings->get('method') . '.duotone';
     }
   }
 
