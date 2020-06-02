@@ -5,20 +5,9 @@
  */
 
 set_time_limit(0);
-require __DIR__ . '/../vendor/autoload.php';
+require __DIR__ . '/generate_base.php';
 
-// Downloaded from https://github.com/unicode-cldr/cldr-localenames-full.git
-$localeDirectory = __DIR__ . '/assets/cldr-localenames-full/main/';
 $enLanguages = $localeDirectory . 'en/languages.json';
-// Downloaded from https://github.com/unicode-cldr/cldr-numbers-full.git
-$numbersDirectory = __DIR__ . '/assets/cldr-numbers-full/main/';
-
-if (!is_dir($localeDirectory)) {
-    die("The $localeDirectory directory was not found");
-}
-if (!is_dir($numbersDirectory)) {
-    die("The $numbersDirectory directory was not found");
-}
 if (!file_exists($enLanguages)) {
     die("The $enLanguages file was not found");
 }
@@ -164,42 +153,4 @@ function filter_duplicates(array $numberFormats)
     }
 
     return $numberFormats;
-}
-
-/**
- * Creates a list of available locales.
- */
-function discover_locales()
-{
-    global $localeDirectory;
-
-    // Locales listed without a "-" match all variants.
-    // Locales listed with a "-" match only those exact ones.
-    $ignoredLocales = [
-        // Interlingua is a made up language.
-        'ia',
-        // Ignored by other generation scripts, very minor locales.
-        'as', 'asa', 'bem', 'ccp', 'chr', 'dav', 'dua', 'ebu', 'ewo', 'guz', 'gv', 'ii',
-        'jgo', 'jmc', 'kam', 'kde', 'ki', 'kkj', 'kl', 'kln', 'ksb', 'kw', 'lag',
-        'ln', 'mer', 'mgo', 'nd', 'nmg', 'nnh', 'nus', 'os', 'ps', 'rwk', 'sah',
-        'saq', 'sbp', 'shi', 'sn', 'teo', 'vai', 'vun', 'xog', 'zgh',
-        // Special "grouping" locales.
-        'root', 'en-US-POSIX',
-    ];
-
-    // Gather available locales.
-    $locales = [];
-    if ($handle = opendir($localeDirectory)) {
-        while (false !== ($entry = readdir($handle))) {
-            if (substr($entry, 0, 1) != '.') {
-                $entryParts = explode('-', $entry);
-                if (!in_array($entry, $ignoredLocales) && !in_array($entryParts[0], $ignoredLocales)) {
-                    $locales[] = $entry;
-                }
-            }
-        }
-        closedir($handle);
-    }
-
-    return $locales;
 }
