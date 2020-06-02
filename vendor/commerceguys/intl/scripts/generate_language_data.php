@@ -8,23 +8,11 @@
  * for which CLDR itself has translations are listed.
  */
 
-set_time_limit(0);
-require __DIR__ . '/../vendor/autoload.php';
+require __DIR__ . '/generate_base.php';
 
-// Downloaded from https://github.com/unicode-cldr/cldr-localenames-full.git
-$localeDirectory = __DIR__ . '/assets/cldr-localenames-full/main/';
 $enLanguages = $localeDirectory . 'en/languages.json';
-
-if (!is_dir($localeDirectory)) {
-    die("The $localeDirectory directory was not found");
-}
 if (!file_exists($enLanguages)) {
     die("The $enLanguages file was not found");
-}
-if (!function_exists('collator_create')) {
-    // Reimplementing intl's collator would be a huge undertaking, so we
-    // use it instead to presort the generated locale specific data.
-    die('The intl extension was not found.');
 }
 
 $languages = generate_languages();
@@ -58,17 +46,6 @@ file_put_contents(__DIR__ . '/language_data.php', $data);
 echo "Done.\n";
 
 /**
- * Converts the provided data into json and writes it to the disk.
- */
-function file_put_json($filename, $data)
-{
-    $data = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-    // Indenting with tabs instead of 4 spaces gives us 20% smaller files.
-    $data = str_replace('    ', "\t", $data);
-    file_put_contents($filename, $data);
-}
-
-/**
  * Exports locales.
  */
 function export_locales($data)
@@ -98,12 +75,13 @@ function generate_languages()
     $index = array_search('en', $locales);
     unset($locales[$index]);
     array_unshift($locales, 'en');
-    // The filtering of the language list against the locale list can be
-    // too strict, filtering out languages that should be in the final list.
-    // This override ensures that such cases are covered.
-    $explicitlyAllowed = ['wa'];
+    // Skip all languages that aren't an available locale at the same time.
+    // This reduces the language list from about 515 to about 185 languages.
+    $allowedLanguages = scandir($localeDirectory);
+    $allowedLanguages[] = 'wa';
+    $allowedLanguages = array_diff($allowedLanguages, ['eo', 'ia', 'vo', 'cu', 'gv', 'prg', 'root']);
     // Languages that are untranslated in most locales (as of CLDR v34).
-    $explicitlyIgnored = ['ccp', 'fa-AF'];
+    $allowedLanguages = array_diff($allowedLanguages, ['ccp', 'fa-AF']);
 
     $untranslatedCounts = [];
     $languages = [];
@@ -111,12 +89,7 @@ function generate_languages()
         $data = json_decode(file_get_contents($localeDirectory . $locale . '/languages.json'), true);
         $data = $data['main'][$locale]['localeDisplayNames']['languages'];
         foreach ($data as $languageCode => $languageName) {
-            // Skip all languages that aren't an available locale at the same time.
-            // This reduces the language list from about 515 to about 185 languages.
-            if (!in_array($languageCode, $locales) && !in_array($languageCode, $explicitlyAllowed)) {
-                continue;
-            }
-            if (in_array($languageCode, $explicitlyIgnored)) {
+            if (!in_array($languageCode, $allowedLanguages)) {
                 continue;
             }
 
@@ -179,39 +152,4 @@ function filter_duplicate_localizations(array $localizations)
     }
 
     return $localizations;
-}
-
-/**
- * Creates a list of available locales.
- */
-function discover_locales()
-{
-    global $localeDirectory;
-
-    // Locales listed without a "-" match all variants.
-    // Locales listed with a "-" match only those exact ones.
-    $ignoredLocales = [
-        // Interlingua is a made up language.
-        'ia',
-        // Valencian differs from its parent only by a single character (è/é).
-        'ca-ES-VALENCIA',
-        // Special "grouping" locales.
-        'root', 'en-US-POSIX',
-    ];
-
-    // Gather available locales.
-    $locales = [];
-    if ($handle = opendir($localeDirectory)) {
-        while (false !== ($entry = readdir($handle))) {
-            if (substr($entry, 0, 1) != '.') {
-                $entryParts = explode('-', $entry);
-                if (!in_array($entry, $ignoredLocales) && !in_array($entryParts[0], $ignoredLocales)) {
-                    $locales[] = $entry;
-                }
-            }
-        }
-        closedir($handle);
-    }
-
-    return $locales;
 }

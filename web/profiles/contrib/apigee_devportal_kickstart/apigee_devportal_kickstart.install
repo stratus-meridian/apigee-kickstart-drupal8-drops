@@ -1,5 +1,7 @@
 <?php
 
+use Drupal\Core\File\Exception\FileException;
+use Drupal\Core\File\FileSystemInterface;
 /**
  * @file
  * Copyright 2019 Google Inc.
@@ -51,19 +53,19 @@ function apigee_devportal_kickstart_install_tasks(&$install_state) {
   ];
 
   // Add monetization tasks if the configured organization is monetizable.
-  if (Drupal::moduleHandler()->moduleExists('apigee_edge')
-    && Drupal::hasService('address.subdivision_repository')
-    && Drupal::hasService('apigee_devportal_kickstart.monetization') && Drupal::service('apigee_devportal_kickstart.monetization')->isMonetizable()) {
-    $tasks = array_merge([
-      ApigeeMonetizationConfigurationForm::class => [
-        'display_name' => t('Configure monetization'),
-        'type' => 'form',
-      ],
-      'apigee_devportal_setup_monetization' => [
+  if (Drupal::hasService('apigee_devportal_kickstart.monetization') && Drupal::service('apigee_devportal_kickstart.monetization')->isMonetizable()) {
+    $tasks[ApigeeMonetizationConfigurationForm::class] = [
+      'display_name' => t('Configure monetization'),
+      'type' => 'form',
+    ];
+
+    // Setup monetization if all dependencies are met.
+    if (empty(Drupal::service('apigee_devportal_kickstart.monetization')->getMissingDependencies())) {
+      $tasks['apigee_devportal_setup_monetization'] = [
         'display_name' => t('Setup monetization'),
         'type' => 'batch',
-      ],
-    ], $tasks);
+      ];
+    }
   }
 
   $tasks['apigee_devportal_kickstart_finish'] = [
@@ -106,14 +108,13 @@ function apigee_devportal_kickstart_install_tasks_alter(&$tasks, $install_state)
  *   The install state.
  */
 function apigee_devportal_monetization_preflight(array &$install_state) {
+  if (!\Drupal::moduleHandler()->moduleExists('address')) {
+    return;
+  }
+
   // The monetization configuration form needs an address field.
   // Enable the address module.
-  try {
-    \Drupal::service('module_installer')->install(['address']);
-  }
-  catch (\Exception $exception) {
-    watchdog_exception('apigee_kickstart', $exception);
-  }
+  \Drupal::service('apigee_devportal_kickstart.monetization')->ensureInstalled('address');
 }
 
 /**
@@ -230,7 +231,7 @@ function apigee_devportal_kickstart_install() {
   $src_path = drupal_get_path('profile', 'apigee_devportal_kickstart') . '/resources/files';
 
   // Get public files directory.
-  $dest_path = file_default_scheme() . '://';
+  $dest_path = \Drupal::config('system.file')->get('default_scheme') . '://';
 
   // Files to copy.
   // Not all files are copied. So we list them here individually.
@@ -258,13 +259,20 @@ function apigee_devportal_kickstart_install() {
   foreach ($filesets as $destination => $files) {
     foreach ($files as $file) {
       if (file_exists($src_path . '/' . $file)) {
+        $file_system = \Drupal::service('file_system');
+
         // If the file exists in public://, it should be skipped, as these are
         // tied to media entities which hard-code the path/file.
         $directory = $dest_path . $destination;
         if (!empty($destination)) {
-          file_prepare_directory($directory, FILE_CREATE_DIRECTORY);
+          $file_system->prepareDirectory($directory, FileSystemInterface::CREATE_DIRECTORY);
         }
-        file_unmanaged_copy($src_path . '/' . $file, $directory . $file);
+        try {
+          \Drupal::service('file_system')->copy($src_path . '/' . $file, $directory . $file);
+        }
+        catch (FileException $e) {
+          // Do nothing.
+        }
       }
     }
   }
@@ -331,5 +339,18 @@ function apigee_devportal_kickstart_update_8002(&$sandbox) {
   }
   catch (\Exception $exception) {
     watchdog_exception('apigee_kickstart', $exception);
+  }
+}
+
+/**
+ * Enable display settings for apps.
+ */
+function apigee_devportal_kickstart_update_8006(&$sandbox) {
+  $config_factory = \Drupal::configFactory();
+  foreach (\Drupal::service('apigee_kickstart.enhancer')->getAppEntityTypes() as $entity_type_id => $app_entity_type) {
+    $config_factory->getEditable("apigee_edge.display_settings.{$entity_type_id}")
+      ->set('display_type', 'view_mode')
+      ->set('view_mode', 'collapsible_card')
+      ->save();
   }
 }
