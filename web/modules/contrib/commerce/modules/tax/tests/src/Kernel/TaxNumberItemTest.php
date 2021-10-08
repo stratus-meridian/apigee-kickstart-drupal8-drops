@@ -41,7 +41,7 @@ class TaxNumberItemTest extends CommerceKernelTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $field_storage = FieldStorageConfig::create([
@@ -183,7 +183,7 @@ class TaxNumberItemTest extends CommerceKernelTestBase {
     $tax_number_item = $entity->get('test_tax_number')->first();
     // Confirm that "EU" expands to the full list of EU countries.
     $this->assertNotContains('EU', $tax_number_item->getAllowedCountries());
-    $this->assertCount(30, $tax_number_item->getAllowedCountries());
+    $this->assertCount(29, $tax_number_item->getAllowedCountries());
     $this->assertEquals(['european_union_vat'], $tax_number_item->getAllowedTypes());
 
     // Restricted to EU + a non-EU country.
@@ -195,7 +195,7 @@ class TaxNumberItemTest extends CommerceKernelTestBase {
     // Confirm that "EU" expands to the full list of EU countries.
     $this->assertNotContains('EU', $tax_number_item->getAllowedCountries());
     $this->assertContains('US', $tax_number_item->getAllowedCountries());
-    $this->assertCount(31, $tax_number_item->getAllowedCountries());
+    $this->assertCount(30, $tax_number_item->getAllowedCountries());
     $this->assertEquals(['european_union_vat', 'other'], $tax_number_item->getAllowedTypes());
 
     // Restricted to a non-EU country.

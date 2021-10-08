@@ -15,6 +15,7 @@ class CheckoutFlowListBuilder extends ConfigEntityListBuilder {
    */
   public function buildHeader() {
     $header['label'] = $this->t('Checkout flow');
+    $header['id'] = $this->t('ID');
     return $header + parent::buildHeader();
   }
 
@@ -23,6 +24,7 @@ class CheckoutFlowListBuilder extends ConfigEntityListBuilder {
    */
   public function buildRow(EntityInterface $entity) {
     $row['label'] = $entity->label();
+    $row['id'] = $entity->id();
     return $row + parent::buildRow($entity);
   }
 

@@ -28,6 +28,8 @@ class AdjustmentDefaultWidget extends WidgetBase {
     /** @var \Drupal\commerce_order\Adjustment $adjustment */
     $adjustment = $items[$delta]->value;
 
+    $element['#type'] = 'container';
+    $element['#attributes']['class'][] = 'form--inline';
     $element['#attached']['library'][] = 'commerce_price/admin';
 
     /** @var \Drupal\Component\Plugin\PluginManagerInterface $plugin_manager */
@@ -77,11 +79,12 @@ class AdjustmentDefaultWidget extends WidgetBase {
     $element['definition']['label'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Label'),
+      '#size' => 20,
       '#default_value' => ($adjustment) ? $adjustment->getLabel() : '',
     ];
     $element['definition']['amount'] = [
       '#type' => 'commerce_price',
-      '#title' => t('Amount'),
+      '#title' => $this->t('Amount'),
       '#default_value' => ($adjustment) ? $adjustment->getAmount()->toArray() : NULL,
       '#allow_negative' => TRUE,
       '#states' => [
@@ -89,10 +92,11 @@ class AdjustmentDefaultWidget extends WidgetBase {
           'select[name="' . $states_selector_name . '"]' => ['value' => '_none'],
         ],
       ],
+      '#attributes' => ['class' => ['clearfix']],
     ];
     $element['definition']['included'] = [
       '#type' => 'checkbox',
-      '#title' => t('Included in the base price'),
+      '#title' => $this->t('Included in the base price'),
       '#default_value' => ($adjustment) ? $adjustment->isIncluded() : FALSE,
     ];
 

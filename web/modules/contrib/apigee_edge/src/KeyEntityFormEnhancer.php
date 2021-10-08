@@ -21,10 +21,9 @@
 namespace Drupal\apigee_edge;
 
 use Apigee\Edge\Exception\ApiRequestException;
-use Apigee\Edge\Exception\HybridOauth2AuthenticationException;
+use Apigee\Edge\Exception\ApigeeOnGcpOauth2AuthenticationException;
 use Apigee\Edge\Exception\OauthAuthenticationException;
 use Apigee\Edge\HttpClient\Plugin\Authentication\Oauth;
-use DomainException;
 use Drupal\apigee_edge\Exception\AuthenticationKeyException;
 use Drupal\apigee_edge\Exception\InvalidArgumentException;
 use Drupal\apigee_edge\Exception\KeyProviderRequirementsException;
@@ -345,6 +344,9 @@ final class KeyEntityFormEnhancer {
       // Test the connection.
       $this->connector->testConnection($test_key);
       $this->messenger()->addStatus($this->t('Connection successful.'));
+
+      // Based on type of organization, cache needs to clear.
+      drupal_flush_all_caches();
     }
     catch (\Exception $exception) {
       watchdog_exception('apigee_edge', $exception);
@@ -362,7 +364,10 @@ final class KeyEntityFormEnhancer {
       // still not clear the submitted value.
       // \Drupal\apigee_edge\Plugin\KeyInput\ApigeeAuthKeyInput::buildConfigurationForm()
       // does not get called in this case.
-      if ($test_key_type->getInstanceType($test_key) != EdgeKeyTypeInterface::INSTANCE_TYPE_HYBRID) {
+      $is_provider_env = ($test_key && $test_key->getKeyProvider()->getPluginId() === 'env');
+      $is_provider_file = ($test_key && $test_key->getKeyProvider()->getPluginId() === 'file');
+
+      if (($test_key_type->getInstanceType($test_key) != EdgeKeyTypeInterface::INSTANCE_TYPE_HYBRID) && !$is_provider_env && !$is_provider_file) {
         $form['settings']['input_section']['key_input_settings']['password']['#attributes']['value'] = $test_key_type->getPassword($test_key);
       }
     }
@@ -470,7 +475,7 @@ final class KeyEntityFormEnhancer {
       ]);
     }
 
-    elseif ($exception instanceof HybridOauth2AuthenticationException) {
+    elseif ($exception instanceof ApigeeOnGcpOauth2AuthenticationException) {
       $fail_text = $this->t('Failed to connect to the authorization server.');
       // General error message.
       $suggestion = $this->t('@fail_text Check the debug information below for more details.', [
@@ -478,7 +483,7 @@ final class KeyEntityFormEnhancer {
       ]);
 
       // Invalid key / OpenSSL unable to sign data.
-      if ($exception->getPrevious() && $exception->getPrevious() instanceof DomainException) {
+      if ($exception->getPrevious() && $exception->getPrevious() instanceof \DomainException) {
         $suggestion = $this->t('@fail_text The private key in the GCP service account key JSON is invalid.', [
           '@fail_text' => $fail_text,
         ]);

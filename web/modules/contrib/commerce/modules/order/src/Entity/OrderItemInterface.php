@@ -207,6 +207,28 @@ interface OrderItemInterface extends ContentEntityInterface, EntityAdjustableInt
   public function unsetData($key);
 
   /**
+   * Gets whether the order item is locked.
+   *
+   * @return bool
+   *   TRUE if the order item is locked, FALSE otherwise.
+   */
+  public function isLocked();
+
+  /**
+   * Locks the order item.
+   *
+   * @return $this
+   */
+  public function lock();
+
+  /**
+   * Unlocks the order item.
+   *
+   * @return $this
+   */
+  public function unlock();
+
+  /**
    * Gets the order item creation timestamp.
    *
    * @return int

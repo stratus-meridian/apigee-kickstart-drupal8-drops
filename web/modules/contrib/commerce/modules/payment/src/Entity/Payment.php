@@ -29,6 +29,7 @@ use Drupal\Core\Field\BaseFieldDefinition;
  *     "event" = "Drupal\commerce_payment\Event\PaymentEvent",
  *     "list_builder" = "Drupal\commerce_payment\PaymentListBuilder",
  *     "storage" = "Drupal\commerce_payment\PaymentStorage",
+ *     "storage_schema" = "Drupal\commerce\CommerceContentEntityStorageSchema",
  *     "form" = {
  *       "operation" = "Drupal\commerce_payment\Form\PaymentOperationForm",
  *       "delete" = "Drupal\Core\Entity\ContentEntityDeleteForm",
@@ -40,6 +41,9 @@ use Drupal\Core\Field\BaseFieldDefinition;
  *   },
  *   base_table = "commerce_payment",
  *   admin_permission = "administer commerce_payment",
+ *   field_indexes = {
+ *     "remote_id"
+ *   },
  *   entity_keys = {
  *     "id" = "payment_id",
  *     "bundle" = "type",
@@ -155,6 +159,36 @@ class Payment extends ContentEntityBase implements PaymentInterface {
    */
   public function setRemoteState($remote_state) {
     $this->set('remote_state', $remote_state);
+    return $this;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getAvsResponseCode() {
+    return $this->get('avs_response_code')->value;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setAvsResponseCode($avs_response_code) {
+    $this->set('avs_response_code', $avs_response_code);
+    return $this;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getAvsResponseCodeLabel() {
+    return $this->get('avs_response_code_label')->value;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setAvsResponseCodeLabel($avs_response_code_label) {
+    $this->set('avs_response_code_label', $avs_response_code_label);
     return $this;
   }
 
@@ -421,6 +455,16 @@ class Payment extends ContentEntityBase implements PaymentInterface {
     $fields['completed'] = BaseFieldDefinition::create('timestamp')
       ->setLabel(t('Completed'))
       ->setDescription(t('The time when the payment was completed.'))
+      ->setDisplayConfigurable('view', TRUE);
+
+    $fields['avs_response_code'] = BaseFieldDefinition::create('string')
+      ->setLabel(t('AVS response code'))
+      ->setDescription(t('The AVS response code.'))
+      ->setDisplayConfigurable('view', TRUE);
+
+    $fields['avs_response_code_label'] = BaseFieldDefinition::create('string')
+      ->setLabel(t('AVS response code label'))
+      ->setDescription(t('The AVS response code label.'))
       ->setDisplayConfigurable('view', TRUE);
 
     // These fields have been replaced by payment_gateway_mode and completed.

@@ -125,13 +125,13 @@ class OrderTypeForm extends CommerceBundleEntityFormBase {
     ];
     $form['refresh']['refresh_frequency'] = [
       '#type' => 'number',
-      '#title' => t('Order refresh frequency'),
-      '#description' => t('Draft orders will only be refreshed if more than the specified number of seconds have passed since they were last refreshed.'),
+      '#title' => $this->t('Order refresh frequency'),
+      '#description' => $this->t('Draft orders will only be refreshed if more than the specified number of seconds have passed since they were last refreshed.'),
       '#default_value' => ($order_type->isNew()) ? 300 : $order_type->getRefreshFrequency(),
       '#required' => TRUE,
       '#min' => 1,
       '#size' => 10,
-      '#field_suffix' => t('seconds'),
+      '#field_suffix' => $this->t('seconds'),
     ];
 
     $form['emails'] = [

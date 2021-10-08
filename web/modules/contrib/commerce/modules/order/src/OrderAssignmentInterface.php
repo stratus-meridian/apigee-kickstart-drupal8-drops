@@ -17,8 +17,10 @@ interface OrderAssignmentInterface {
    *   The order.
    * @param \Drupal\user\UserInterface $customer
    *   The customer.
+   * @param bool $save_order
+   *   Whether the order should be saved.
    */
-  public function assign(OrderInterface $order, UserInterface $customer);
+  public function assign(OrderInterface $order, UserInterface $customer, $save_order = TRUE);
 
   /**
    * Assigns multiple orders to the given customer.

@@ -1,0 +1,5 @@
+services:
+  file_link_test.client_middleware:
+    class: Drupal\file_link_test\HttpMiddleware
+    tags:
+      - { name: http_client_middleware }

@@ -105,6 +105,11 @@ trait CustomerFormTrait {
         '#type' => 'password_confirm',
         '#size' => 25,
       ];
+
+      $form['customer']['notify'] = [
+        '#type' => 'checkbox',
+        '#title' => t('Notify user of new account'),
+      ];
     }
 
     return $form;
@@ -139,6 +144,10 @@ trait CustomerFormTrait {
       ]);
       $user->save();
       $values['uid'] = $user->id();
+
+      if ($values['notify']) {
+        _user_mail_notify('register_admin_created', $user);
+      }
     }
 
     $form_state->setValues($values);

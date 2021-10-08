@@ -34,7 +34,7 @@ class PaymentMethodAccessTest extends OrderKernelTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->installEntitySchema('commerce_payment_method');
@@ -73,6 +73,21 @@ class PaymentMethodAccessTest extends OrderKernelTestBase {
     $account = $this->createUser([], ['administer commerce_payment_method']);
     $this->assertTrue($payment_method->access('view', $account));
     $this->assertTrue($payment_method->access('update', $account));
+    $this->assertTrue($payment_method->access('delete', $account));
+
+    $account = $this->createUser([], ['view any commerce_payment_method']);
+    $this->assertTrue($payment_method->access('view', $account));
+    $this->assertFalse($payment_method->access('update', $account));
+    $this->assertFalse($payment_method->access('delete', $account));
+
+    $account = $this->createUser([], ['update any commerce_payment_method']);
+    $this->assertFalse($payment_method->access('view', $account));
+    $this->assertTrue($payment_method->access('update', $account));
+    $this->assertFalse($payment_method->access('delete', $account));
+
+    $account = $this->createUser([], ['delete any commerce_payment_method']);
+    $this->assertFalse($payment_method->access('view', $account));
+    $this->assertFalse($payment_method->access('update', $account));
     $this->assertTrue($payment_method->access('delete', $account));
 
     $first_account = $this->createUser([], ['manage own commerce_payment_method']);
@@ -115,6 +130,22 @@ class PaymentMethodAccessTest extends OrderKernelTestBase {
     $this->assertTrue($payment_method->access('view', $account));
     $this->assertFalse($payment_method->access('update', $account));
     $this->assertTrue($payment_method->access('delete', $account));
+
+    $account = $this->createUser([], ['view any commerce_payment_method']);
+    $this->assertTrue($payment_method->access('view', $account));
+    $this->assertFalse($payment_method->access('update', $account));
+    $this->assertFalse($payment_method->access('delete', $account));
+
+    $account = $this->createUser([], ['update any commerce_payment_method']);
+    $this->assertFalse($payment_method->access('view', $account));
+    $this->assertFalse($payment_method->access('update', $account));
+    $this->assertFalse($payment_method->access('delete', $account));
+
+    $account = $this->createUser([], ['delete any commerce_payment_method']);
+    $this->assertFalse($payment_method->access('view', $account));
+    $this->assertFalse($payment_method->access('update', $account));
+    $this->assertTrue($payment_method->access('delete', $account));
+
   }
 
   /**
@@ -141,6 +172,21 @@ class PaymentMethodAccessTest extends OrderKernelTestBase {
     // method if its gateway does not support it.
     $account = $this->createUser([], ['administer commerce_payment_method']);
     $this->assertTrue($payment_method->access('view', $account));
+    $this->assertFalse($payment_method->access('update', $account));
+    $this->assertTrue($payment_method->access('delete', $account));
+
+    $account = $this->createUser([], ['view any commerce_payment_method']);
+    $this->assertTrue($payment_method->access('view', $account));
+    $this->assertFalse($payment_method->access('update', $account));
+    $this->assertFalse($payment_method->access('delete', $account));
+
+    $account = $this->createUser([], ['update any commerce_payment_method']);
+    $this->assertFalse($payment_method->access('view', $account));
+    $this->assertFalse($payment_method->access('update', $account));
+    $this->assertFalse($payment_method->access('delete', $account));
+
+    $account = $this->createUser([], ['delete any commerce_payment_method']);
+    $this->assertFalse($payment_method->access('view', $account));
     $this->assertFalse($payment_method->access('update', $account));
     $this->assertTrue($payment_method->access('delete', $account));
   }

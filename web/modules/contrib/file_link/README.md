@@ -41,7 +41,7 @@ Your test site will be available at [http://localhost:8080/build](http://localho
 Run coding style checks:
 
 ```
-$ docker-compose exec php ./vendor/bin/grumphp ru<n
+$ docker-compose exec php ./vendor/bin/grumphp run
 ```
 
 Run tests:

@@ -7,19 +7,30 @@
         {
             "type": "composer",
             "url": "https://packages.drupal.org/8"
+        },
+        {
+            "type": "package",
+            "package": {
+                "name": "furf/jquery-ui-touch-punch",
+                "version": "dev-master",
+                "type": "drupal-library",
+                "dist": {
+                    "url": "https://github.com/furf/jquery-ui-touch-punch/archive/master.zip",
+                    "type": "zip"
+                }
+            }
         }
     ],
     "require": {
-      "composer/installers": "^1.2",
-      "cweagans/composer-patches": "^1.6.5",
-      "drupal-composer/drupal-scaffold": "^2.5",
-      "apigee/apigee_devportal_kickstart": "^1.0.0",
-      "drupal/apigee_m10n": "^1.0.0",
-      "drupal/commerce": "^2.13",
-      "php": "^7.1",
-      "drush/drush": "^9.7"
-    },
-    "require-dev": {
+        "php": "^7.1",
+        "apigee/apigee_devportal_kickstart": "^1.0.0",
+        "composer/installers": "^1.2",
+        "cweagans/composer-patches": "^1.6.5",
+        "drupal/apigee_m10n": "^1.0.0",
+        "drupal/commerce": "^2.13",
+        "drupal/core-composer-scaffold": "^8.8",
+        "drush/drush": "^9.7",
+        "furf/jquery-ui-touch-punch": "dev-master"
     },
     "conflict": {
             "drupal/drupal": "*"
@@ -68,6 +79,9 @@
             "export-configuration": "drush config-export --yes"
         },
         "drupal-scaffold": {
+            "locations": {
+                "web-root": "web/"
+            },
             "source": "https://raw.githubusercontent.com/pantheon-systems/drops-8-scaffolding/{version}/{path}",
             "includes": [
                 "sites/default/default.services.pantheon.preproduction.yml",

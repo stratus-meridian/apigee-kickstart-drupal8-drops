@@ -20,15 +20,19 @@
 #}
 {{ attach_library('commerce_order/total_summary') }}
 <div{{ attributes }}>
-  <div class="order-total-line order-total-line__subtotal">
-    <span class="order-total-line-label">{{ 'Subtotal'|t }} </span><span class="order-total-line-value">{{ totals.subtotal|commerce_price_format }}</span>
-  </div>
+  {% if totals.subtotal %}
+    <div class="order-total-line order-total-line__subtotal">
+      <span class="order-total-line-label">{{ 'Subtotal'|t }} </span><span class="order-total-line-value">{{ totals.subtotal|commerce_price_format }}</span>
+    </div>
+  {% endif %}
   {% for adjustment in totals.adjustments %}
     <div class="order-total-line order-total-line__adjustment order-total-line__adjustment--{{ adjustment.type|clean_class }}">
       <span class="order-total-line-label">{{ adjustment.label }} </span><span class="order-total-line-value">{{ adjustment.amount|commerce_price_format }}</span>
     </div>
   {% endfor %}
-  <div class="order-total-line order-total-line__total">
-    <span class="order-total-line-label">{{ 'Total'|t }} </span><span class="order-total-line-value">{{ totals.total|commerce_price_format }}</span>
-  </div>
+  {% if totals.total %}
+    <div class="order-total-line order-total-line__total">
+      <span class="order-total-line-label">{{ 'Total'|t }} </span><span class="order-total-line-value">{{ totals.total|commerce_price_format }}</span>
+    </div>
+  {% endif %}
 </div>

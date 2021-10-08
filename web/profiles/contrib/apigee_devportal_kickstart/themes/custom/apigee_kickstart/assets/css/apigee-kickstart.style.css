@@ -11667,6 +11667,13 @@ table.table-bordered tbody td {
   padding: 1rem;
 }
 
+.ui-widget.ui-dialog {
+  z-index: 9999;
+}
+.ui-widget.ui-dialog .ui-dialog-buttonset.form-actions {
+  display: flex;
+}
+
 html,
 body {
   height: 100%;
@@ -12188,6 +12195,17 @@ li.dropbutton-toggle {
   -webkit-mask-position: 50% 90%;
           mask-position: 50% 90%;
   transform: rotate(-180deg);
+}
+
+td .dropbutton-single .dropbutton-widget {
+  position: static;
+}
+.purchased-product-action .dropbutton-single {
+  display: inline-block;
+}
+
+td .dropbutton-single .dropbutton-action a {
+  border-radius: 4px;
 }
 
 .field__label {
@@ -12985,7 +13003,7 @@ ul.social-links li a {
 .apigee-entity--app .tab-pane .api-product-list-row,
 .apigee-entity--app .tab-pane .item-property {
     flex-direction: row;
-    align-items: center;
+    align-items: baseline;
   }
 }
 .apigee-entity--app .tab-pane .field label,
@@ -13027,6 +13045,16 @@ ul.social-links li a {
 .apigee-entity--app .card .card-body {
   padding: 0.5rem 0;
 }
+.apigee-entity--app__credentials + .apigee-entity--app__credentials {
+  margin-top: 1rem;
+}
+.apigee-entity--app__credentials .card-header {
+  display: flex;
+  align-items: center;
+}
+.apigee-entity--app__credentials .card-header .btn {
+  margin-left: auto;
+}
 .apigee-entity--app__credentials fieldset {
   padding-bottom: 0.5rem;
 }
@@ -13050,6 +13078,7 @@ ul.social-links li a {
 .apigee-entity--app__credentials fieldset .fieldset-wrapper > div.wrapper--secondary {
   padding-left: 1.2rem;
   padding-right: 1.2rem;
+  margin-top: 2rem;
 }
 .apigee-entity--app__credentials fieldset .fieldset-wrapper > div.wrapper--secondary label {
   padding: 0.8rem 0;
@@ -13069,6 +13098,16 @@ ul.social-links li a {
 }
 .apigee-entity--app__credentials fieldset .fieldset-wrapper > div.wrapper--secondary .api-product-list-row .api-product-name {
   flex: 1;
+}
+.apigee-entity--app__credentials .app-credential {
+  position: relative;
+}
+.apigee-entity--app__credentials .app-credential .dropbutton-wrapper {
+  width: auto;
+  top: 0.5rem;
+}
+.apigee-entity--app__credentials .app-credential .dropbutton-wrapper.dropbutton-single a {
+  border-radius: 4px;
 }
 
 .apigee-entity--app--view-mode-full {
@@ -13517,6 +13556,15 @@ form.team-member-form .form-checkboxes small {
 .views-exposed-form fieldset,
 .views-exposed-form details {
   margin: 0 !important;
+}
+.views-exposed-form ul {
+  padding: 0;
+}
+.views-exposed-form li {
+  list-style: none;
+}
+.views-exposed-form li + li {
+  margin-top: 0.5rem;
 }
 .views-exposed-form fieldset {
   border: 0 !important;

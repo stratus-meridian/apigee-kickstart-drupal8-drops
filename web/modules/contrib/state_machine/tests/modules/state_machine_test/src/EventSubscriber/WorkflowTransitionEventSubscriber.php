@@ -2,11 +2,29 @@
 
 namespace Drupal\state_machine_test\EventSubscriber;
 
+use Drupal\Core\Messenger\MessengerInterface;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\state_machine\Event\WorkflowTransitionEvent;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 class WorkflowTransitionEventSubscriber implements EventSubscriberInterface {
+
+  /**
+   * The messenger.
+   *
+   * @var \Drupal\Core\Messenger\MessengerInterface
+   */
+  protected $messenger;
+
+  /**
+   * Constructs a new WorkflowTransitionEventSubscriber object.
+   *
+   * @param \Drupal\Core\Messenger\MessengerInterface $messenger
+   *   The messenger.
+   */
+  public function __construct(MessengerInterface $messenger) {
+    $this->messenger = $messenger;
+  }
 
   /**
    * {@inheritdoc}
@@ -92,11 +110,12 @@ class WorkflowTransitionEventSubscriber implements EventSubscriberInterface {
    *   The phase during which the event occurred.
    */
   protected function setMessage(WorkflowTransitionEvent $event, $phase) {
-    \Drupal::messenger()->addMessage(new TranslatableMarkup('@entity_label (@field_name) - @state_label at @phase (workflow: @workflow).', [
+    $this->messenger->addMessage(new TranslatableMarkup('@entity_label (@field_name) - @state_label at @phase (workflow: @workflow, transition: @transition).', [
       '@entity_label' => $event->getEntity()->label(),
       '@field_name' => $event->getFieldName(),
       '@state_label' => $event->getTransition()->getToState()->getLabel(),
       '@workflow' => $event->getWorkflow()->getId(),
+      '@transition' => $event->getTransition()->getId(),
       '@phase' => $phase,
     ]));
   }

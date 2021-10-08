@@ -3,13 +3,13 @@
 namespace Drupal\Tests\state_machine\Kernel;
 
 use Drupal\entity_test\Entity\EntityTestWithBundle;
-use Drupal\KernelTests\KernelTestBase;
+use Drupal\Tests\field\Kernel\FieldKernelTestBase;
 
 /**
  * @coversDefaultClass \Drupal\state_machine\Plugin\Field\FieldType\StateItem
  * @group state_machine
  */
-class StateItemTest extends KernelTestBase {
+class StateItemTest extends FieldKernelTestBase {
 
   /**
    * {@inheritdoc}
@@ -60,12 +60,36 @@ class StateItemTest extends KernelTestBase {
     $transitions = $state_item->getTransitions();
     $this->assertCount(count($allowed_transitions), $transitions);
     $this->assertEquals($allowed_transitions, array_keys($transitions));
+    if (count($allowed_transitions) > 0) {
+      foreach ($allowed_transitions as $transition_id) {
+        $this->assertTrue($state_item->isTransitionAllowed($transition_id));
+      }
+    }
+    $this->assertFalse($state_item->isTransitionAllowed('foo'));
     // Confirm that invalid states are recognized.
     if ($invalid_new_state) {
       $state_item->value = $invalid_new_state;
       $this->assertEquals($initial_state, $state_item->getOriginalId());
       $this->assertEquals($invalid_new_state, $state_item->getId());
       $this->assertFalse($state_item->isValid());
+    }
+
+    // Revert to the initial state because the valid transaction could be
+    // invalid from the invalid_new_state.
+    $state_item->value = $initial_state;
+
+    // Retrieve all workflow transitions.
+    $workflow = $state_item->getWorkflow();
+    $all_transitions = $workflow->getTransitions();
+    // Pick a random invalid transition and assert it throws an Exception.
+    $invalid_transitions = array_diff_key($all_transitions, $allowed_transitions);
+    if ($invalid_transitions) {
+      $random_key = array_rand($invalid_transitions);
+      $this->expectException(\InvalidArgumentException::class);
+      $state_item->applyTransition($invalid_transitions[$random_key]);
+      // Also try applying by ID.
+      $this->expectException(\InvalidArgumentException::class);
+      $state_item->applyTransitionById($random_key);
     }
 
     $state_item->applyTransitionById($valid_transition);
@@ -119,6 +143,43 @@ class StateItemTest extends KernelTestBase {
     $data['invalid'] = ['invalid', []];
 
     return $data;
+  }
+
+  /**
+   * @covers ::generateSampleValue
+   */
+  public function testGenerateSampleValue() {
+    $entity = EntityTestWithBundle::create([
+      'type' => 'first',
+    ]);
+    $entity->field_state->generateSampleItems();
+    /** @var \Drupal\state_machine\Plugin\Field\FieldType\StateItemInterface $state_item */
+    $state_item = $entity->get('field_state')->first();
+    $this->assertEquals('default', $state_item->getWorkflow()->getId());
+    $this->assertNotEmpty($state_item->getId());
+    $this->assertTrue(in_array($state_item->getId(), array_keys($state_item->getWorkflow()->getStates())));
+    $this->entityValidateAndSave($entity);
+
+    $entity = EntityTestWithBundle::create([
+      'type' => 'second',
+    ]);
+    $entity->field_state->generateSampleItems();
+    /** @var \Drupal\state_machine\Plugin\Field\FieldType\StateItemInterface $state_item */
+    $state_item = $entity->get('field_state')->first();
+    $this->assertNotEmpty($state_item->getId());
+    $this->assertTrue(in_array($state_item->getId(), array_keys($state_item->getWorkflow()->getStates())));
+    $this->entityValidateAndSave($entity);
+
+    $entity = EntityTestWithBundle::create([
+      'type' => 'third',
+    ]);
+    $entity->field_state->generateSampleItems();
+    /** @var \Drupal\state_machine\Plugin\Field\FieldType\StateItemInterface $state_item */
+    $state_item = $entity->get('field_state')->first();
+    $this->assertEquals('two_transitions', $state_item->getWorkflow()->getId());
+    $this->assertNotEmpty($state_item->getId());
+    $this->assertTrue(in_array($state_item->getId(), array_keys($state_item->getWorkflow()->getStates())));
+    $this->entityValidateAndSave($entity);
   }
 
 }

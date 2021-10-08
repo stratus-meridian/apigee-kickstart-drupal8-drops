@@ -5,6 +5,12 @@
  * Defines the Product entity and associated features.
  */
 
+use Drupal\Core\Access\AccessResult;
+use Drupal\Core\Entity\EntityTypeInterface;
+use Drupal\Core\Session\AccountInterface;
+use Drupal\Core\StringTranslation\TranslatableMarkup;
+use Drupal\commerce_product\Plugin\Block\VariationFieldBlock;
+use Drupal\Component\Plugin\PluginBase;
 use Drupal\entity\BundleFieldDefinition;
 use Drupal\commerce\EntityHelper;
 use Drupal\commerce_product\Entity\ProductTypeInterface;
@@ -344,4 +350,53 @@ function commerce_product_config_schema_info_alter(&$definitions) {
       'label' => 'Maximum number of autocomplete suggestions.',
     ];
   }
+}
+
+/**
+ * Implements hook_commerce_condition_info_alter().
+ */
+function commerce_product_commerce_condition_info_alter(array &$definitions) {
+  if (isset($definitions['order_purchased_entity:commerce_product_variation'])) {
+    $definitions['order_purchased_entity:commerce_product_variation']['category'] = new TranslatableMarkup('Products');
+  }
+  if (isset($definitions['order_item_purchased_entity:commerce_product_variation'])) {
+    $definitions['order_item_purchased_entity:commerce_product_variation']['category'] = new TranslatableMarkup('Products');
+  }
+}
+
+/**
+ * Implements hook_jsonapi_ENTITY_TYPE_filter_access().
+ *
+ * Product variations do not have a query access handler, so we must define
+ * the access for JSON:API filter access here.
+ */
+function commerce_product_jsonapi_commerce_product_variation_filter_access(EntityTypeInterface $entity_type, AccountInterface $account) {
+  return [
+    JSONAPI_FILTER_AMONG_OWN => AccessResult::allowedIfHasPermission($account, 'view own unpublished commerce_product'),
+    JSONAPI_FILTER_AMONG_PUBLISHED => AccessResult::allowedIfHasPermission($account, 'view commerce_product'),
+  ];
+}
+
+/**
+ * Implements hook_block_alter().
+ */
+function commerce_product_block_alter(array &$info) {
+  if (\Drupal::moduleHandler()->moduleExists('layout_builder')) {
+    $base_plugin_id = 'field_block' . PluginBase::DERIVATIVE_SEPARATOR . 'commerce_product_variation' . PluginBase::DERIVATIVE_SEPARATOR;
+    foreach ($info as $block_plugin_id => $block_definition) {
+      if (strpos($block_plugin_id, $base_plugin_id) !== FALSE) {
+        $info[$block_plugin_id]['class'] = VariationFieldBlock::class;
+      }
+    }
+  }
+}
+
+/**
+ * Implements hook_field_group_content_element_keys_alter().
+ *
+ * Allow products to render fields groups defined from Fields UI.
+ */
+function commerce_product_field_group_content_element_keys_alter(&$keys) {
+  $keys['commerce_product'] = 'product';
+  $keys['commerce_product_variation'] = 'product_variation';
 }

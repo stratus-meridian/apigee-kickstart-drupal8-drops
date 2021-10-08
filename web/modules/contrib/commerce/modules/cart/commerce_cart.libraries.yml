@@ -24,4 +24,5 @@ cart_form:
     js/commerce_cart.form.js: {}
   dependencies:
     - core/jquery
+    - core/jquery.once
     - core/drupal

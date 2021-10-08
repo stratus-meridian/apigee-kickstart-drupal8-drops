@@ -31,12 +31,13 @@ class CouponStorageTest extends OrderKernelTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->installEntitySchema('commerce_promotion');
     $this->installEntitySchema('commerce_promotion_coupon');
     $this->installConfig(['commerce_promotion']);
+    $this->installSchema('commerce_promotion', ['commerce_promotion_usage']);
 
     $this->couponStorage = $this->container->get('entity_type.manager')->getStorage('commerce_promotion_coupon');
   }

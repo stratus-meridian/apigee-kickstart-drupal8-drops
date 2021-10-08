@@ -105,10 +105,6 @@ class Number extends FormElement {
     if (isset($element['#ajax']) && !isset($element['#ajax']['event'])) {
       $element['#ajax']['event'] = 'blur';
     }
-    // Provide an example to the end user so that they know which decimal
-    // separator to use. This is the same pattern Drupal core uses.
-    $number_formatter = \Drupal::service('commerce_price.number_formatter');
-    $element['#placeholder'] = $number_formatter->format('9.99');
 
     return $element;
   }

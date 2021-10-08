@@ -1,6 +1,6 @@
 administer commerce_checkout_flow:
   title: 'Administer checkout flows'
-  'restrict access': TRUE
+  restrict access: true
 
 access checkout:
   title: 'Access checkout'

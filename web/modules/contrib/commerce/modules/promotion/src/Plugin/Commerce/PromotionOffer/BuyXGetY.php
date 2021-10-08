@@ -4,16 +4,21 @@ namespace Drupal\commerce_promotion\Plugin\Commerce\PromotionOffer;
 
 use Drupal\commerce\ConditionGroup;
 use Drupal\commerce\ConditionManagerInterface;
+use Drupal\commerce\Context;
+use Drupal\commerce\Plugin\Commerce\Condition\PurchasableEntityConditionInterface;
+use Drupal\commerce\PurchasableEntityInterface;
 use Drupal\commerce_order\Adjustment;
 use Drupal\commerce_order\Entity\OrderItemInterface;
 use Drupal\commerce_order\PriceSplitterInterface;
 use Drupal\commerce_price\Calculator;
 use Drupal\commerce_price\Price;
+use Drupal\commerce_price\Resolver\ChainPriceResolverInterface;
 use Drupal\commerce_price\RounderInterface;
 use Drupal\commerce_promotion\Entity\PromotionInterface;
 use Drupal\Component\Utility\Html;
 use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
@@ -45,6 +50,20 @@ class BuyXGetY extends OrderPromotionOfferBase {
   protected $conditionManager;
 
   /**
+   * The chain base price resolver.
+   *
+   * @var \Drupal\commerce_price\Resolver\ChainPriceResolverInterface
+   */
+  protected $chainPriceResolver;
+
+  /**
+   * The entity type manager.
+   *
+   * @var \Drupal\Core\Entity\EntityTypeManagerInterface
+   */
+  protected $entityTypeManager;
+
+  /**
    * Constructs a new BuyXGetY object.
    *
    * @param array $configuration
@@ -59,11 +78,17 @@ class BuyXGetY extends OrderPromotionOfferBase {
    *   The splitter.
    * @param \Drupal\commerce\ConditionManagerInterface $condition_manager
    *   The condition manager.
+   * @param \Drupal\commerce_price\Resolver\ChainPriceResolverInterface $chain_price_resolver
+   *   The chain price resolver.
+   * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
+   *   The entity type manager.
    */
-  public function __construct(array $configuration, $plugin_id, $plugin_definition, RounderInterface $rounder, PriceSplitterInterface $splitter, ConditionManagerInterface $condition_manager) {
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, RounderInterface $rounder, PriceSplitterInterface $splitter, ConditionManagerInterface $condition_manager, ChainPriceResolverInterface $chain_price_resolver, EntityTypeManagerInterface $entity_type_manager) {
     parent::__construct($configuration, $plugin_id, $plugin_definition, $rounder, $splitter);
 
     $this->conditionManager = $condition_manager;
+    $this->chainPriceResolver = $chain_price_resolver;
+    $this->entityTypeManager = $entity_type_manager;
   }
 
   /**
@@ -76,7 +101,9 @@ class BuyXGetY extends OrderPromotionOfferBase {
       $plugin_definition,
       $container->get('commerce_price.rounder'),
       $container->get('commerce_order.price_splitter'),
-      $container->get('plugin.manager.commerce_condition')
+      $container->get('plugin.manager.commerce_condition'),
+      $container->get('commerce_price.chain_price_resolver'),
+      $container->get('entity_type.manager')
     );
   }
 
@@ -89,9 +116,11 @@ class BuyXGetY extends OrderPromotionOfferBase {
       'buy_conditions' => [],
       'get_quantity' => 1,
       'get_conditions' => [],
+      'get_auto_add' => FALSE,
       'offer_type' => 'percentage',
       'offer_percentage' => '0',
       'offer_amount' => NULL,
+      'offer_limit' => '0',
     ] + parent::defaultConfiguration();
   }
 
@@ -112,6 +141,7 @@ class BuyXGetY extends OrderPromotionOfferBase {
       '#type' => 'commerce_number',
       '#title' => $this->t('Quantity'),
       '#default_value' => $this->configuration['buy_quantity'],
+      '#min' => 1,
     ];
     $form['buy']['conditions'] = [
       '#type' => 'commerce_conditions',
@@ -130,6 +160,7 @@ class BuyXGetY extends OrderPromotionOfferBase {
       '#type' => 'commerce_number',
       '#title' => $this->t('Quantity'),
       '#default_value' => $this->configuration['get_quantity'],
+      '#min' => 1,
     ];
     $form['get']['conditions'] = [
       '#type' => 'commerce_conditions',
@@ -138,7 +169,23 @@ class BuyXGetY extends OrderPromotionOfferBase {
       '#entity_types' => ['commerce_order_item'],
       '#default_value' => $this->configuration['get_conditions'],
     ];
-
+    $states = $this->getAutoAddStatesVisibility();
+    $form['get']['auto_add_help'] = [
+      '#type' => 'item',
+      '#title' => $this->t('Behavior'),
+      '#states' => [
+        'visible' => [$states],
+      ],
+    ];
+    $form['get']['auto_add'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t("Automatically add the offer product to the cart if it isn't in it already"),
+      '#description' => $this->t('This behavior will only work when a single product variation (or a single product with only one variation) is specified.'),
+      '#default_value' => $this->configuration['get_auto_add'],
+      '#states' => [
+        'visible' => [$states],
+      ],
+    ];
     $parents = array_merge($form['#parents'], ['offer', 'type']);
     $selected_offer_type = NestedArray::getValue($form_state->getUserInput(), $parents);
     $selected_offer_type = $selected_offer_type ?: $this->configuration['offer_type'];
@@ -186,6 +233,34 @@ class BuyXGetY extends OrderPromotionOfferBase {
       ];
     }
 
+    $form['limit'] = [
+      '#type' => 'fieldset',
+      '#title' => $this->t('Offer limit'),
+      '#description' => $this->t('The number of times this offer can apply to the same order.'),
+      '#collapsible' => FALSE,
+    ];
+    $form['limit']['amount'] = [
+      '#type' => 'radios',
+      '#title' => $this->t('Limited to'),
+      '#title_display' => 'invisible',
+      '#options' => [
+        0 => $this->t('Unlimited'),
+        1 => $this->t('Limited number of uses'),
+      ],
+      '#default_value' => $this->configuration['offer_limit'] ? 1 : 0,
+    ];
+    $form['limit']['offer_limit'] = [
+      '#type' => 'number',
+      '#title' => $this->t('Number of uses'),
+      '#title_display' => 'invisible',
+      '#default_value' => $this->configuration['offer_limit'] ?: 1,
+      '#states' => [
+        'invisible' => [
+          ':input[name="offer[0][target_plugin_configuration][order_buy_x_get_y][limit][amount]"]' => ['value' => 0],
+        ],
+      ],
+    ];
+
     return $form;
   }
 
@@ -208,6 +283,30 @@ class BuyXGetY extends OrderPromotionOfferBase {
     if ($values['offer']['type'] == 'percentage' && empty($values['offer']['percentage'])) {
       $form_state->setError($form, $this->t('Percentage must be a positive number.'));
     }
+
+    if ($values['get']['auto_add']) {
+      // Ensure that at least one compatible condition enabled.
+      $valid_condition_ids = array_keys($this->getPurchasableEntityConditions());
+      $has_valid_condition = FALSE;
+      foreach ($values['get']['conditions']['products'] as $condition_id => $condition_values) {
+        if (in_array($condition_id, $valid_condition_ids) && (bool) $condition_values['enable']) {
+          $has_valid_condition = TRUE;
+          break;
+        }
+      }
+      // We can't automatically add the "get" product if no valid conditions are
+      // selected.
+      if (!$has_valid_condition) {
+        $values['get']['auto_add'] = FALSE;
+        $form_state->setValue($form['#parents'], $values);
+        return;
+      }
+
+      // Ensure that the offer is a 100% discount.
+      if ($values['offer']['type'] === 'fixed_amount' || ($values['offer']['type'] === 'percentage' && $values['offer']['percentage'] != '100')) {
+        $form_state->setError($form['offer'], $this->t('The "auto-add" offer can only be enabled for fully discounted products (i.e with a 100% discount).'));
+      }
+    }
   }
 
   /**
@@ -222,6 +321,7 @@ class BuyXGetY extends OrderPromotionOfferBase {
       $this->configuration['buy_conditions'] = $values['buy']['conditions'];
       $this->configuration['get_quantity'] = $values['get']['quantity'];
       $this->configuration['get_conditions'] = $values['get']['conditions'];
+      $this->configuration['get_auto_add'] = $values['get']['auto_add'];
       $this->configuration['offer_type'] = $values['offer']['type'];
       if ($this->configuration['offer_type'] == 'percentage') {
         $this->configuration['offer_percentage'] = Calculator::divide((string) $values['offer']['percentage'], '100');
@@ -231,6 +331,7 @@ class BuyXGetY extends OrderPromotionOfferBase {
         $this->configuration['offer_percentage'] = NULL;
         $this->configuration['offer_amount'] = $values['offer']['amount'];
       }
+      $this->configuration['offer_limit'] = ($values['limit']['amount'] == 0 ? 0 : $values['limit']['offer_limit']);
     }
   }
 
@@ -253,6 +354,41 @@ class BuyXGetY extends OrderPromotionOfferBase {
     }
 
     $get_conditions = $this->buildConditionGroup($this->configuration['get_conditions']);
+    if ($this->configuration['get_auto_add'] && ($get_purchasable_entity = $this->findSinglePurchasableEntity($get_conditions))) {
+      $order_item = $this->findOrCreateOrderItem($get_purchasable_entity, $order_items);
+      $expected_get_quantity = $this->calculateExpectedGetQuantity($buy_quantities, $order_item);
+
+      // If the expected get quantity is non-zero, we need to update the
+      // quantity of the 'get' order item accordingly.
+      if (Calculator::compare($expected_get_quantity, '0') !== 0) {
+        if (Calculator::compare($order_item->getQuantity(), $expected_get_quantity) === -1) {
+          $order_item->setQuantity($expected_get_quantity);
+
+          // Ensure that order items which are 'touched' by this promotion can
+          // not be edited by the customer, either by changing their quantity or
+          // removing them from the cart.
+          $order_item->lock();
+        }
+
+        // Keep track of the quantity that was auto-added to this order item so
+        // we can subtract it (or remove the order item completely) if the buy
+        // conditions are no longer satisfied on the next order refresh.
+        $order_item->setData("promotion:{$promotion->id()}:auto_add_quantity", $expected_get_quantity);
+
+        $time = $order->getCalculationDate()->format('U');
+        $context = new Context($order->getCustomer(), $order->getStore(), $time);
+        $unit_price = $this->chainPriceResolver->resolve($get_purchasable_entity, $order_item->getQuantity(), $context);
+        $order_item->setUnitPrice($unit_price);
+
+        if ($order_item->isNew()) {
+          $order_item->set('order_id', $order->id());
+          $order_item->save();
+          $order->addItem($order_item);
+          $order_items = $order->getItems();
+        }
+      }
+    }
+
     $get_order_items = $this->selectOrderItems($order_items, $get_conditions, 'ASC');
     $get_quantities = array_map(function (OrderItemInterface $order_item) {
       return $order_item->getQuantity();
@@ -267,7 +403,19 @@ class BuyXGetY extends OrderPromotionOfferBase {
     // discounted products, in this order: 3, 1, 3, 1. To ensure the specified
     // results, $buy_quantities must be processed group by group, with any
     // overlaps immediately removed from the $get_quantities (and vice-versa).
+    // Additionally, ensure that any items from $buy_quantities that overlap
+    // with $get_quantities are processed last, in order to accommodate the case
+    // when $buy_conditions (or the lack thereof) are satisfied by the other
+    // (non-overlapping) $buy_quantity items.
+    foreach ($buy_quantities as $id => $quantity) {
+      if (isset($get_quantities[$id])) {
+        unset($buy_quantities[$id]);
+        $buy_quantities[$id] = $quantity;
+      }
+    }
+
     $final_quantities = [];
+    $i = 0;
     while (!empty($buy_quantities)) {
       $selected_buy_quantities = $this->sliceQuantities($buy_quantities, $this->configuration['buy_quantity']);
       if (array_sum($selected_buy_quantities) < $this->configuration['buy_quantity']) {
@@ -279,6 +427,11 @@ class BuyXGetY extends OrderPromotionOfferBase {
       // Merge the selected get quantities into a final list, to ensure that
       // each order item only gets a single adjustment.
       $final_quantities = $this->mergeQuantities($final_quantities, $selected_get_quantities);
+
+      // Determine whether the offer reached its limit.
+      if ($this->configuration['offer_limit'] == ++$i) {
+        break;
+      }
     }
 
     foreach ($final_quantities as $order_item_id => $quantity) {
@@ -291,6 +444,34 @@ class BuyXGetY extends OrderPromotionOfferBase {
         'amount' => $adjustment_amount->multiply('-1'),
         'source_id' => $promotion->id(),
       ]));
+    }
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function clear(EntityInterface $entity, PromotionInterface $promotion) {
+    parent::clear($entity, $promotion);
+
+    $this->assertEntity($entity);
+    /** @var \Drupal\commerce_order\Entity\OrderInterface $order */
+    $order = $entity;
+
+    // Check if we have any order item whose quantity has been changed by this
+    // promotion, and subtract that amount. If the promotion still applies, the
+    // necessary quantity will be added back in ::apply(). Order items that will
+    // end up with a quantity of 0 will be removed from the order by
+    // \Drupal\commerce_order\OrderRefresh::refresh().
+    if ($this->configuration['get_auto_add']) {
+      $promotion_data_key = "promotion:{$promotion->id()}:auto_add_quantity";
+      $auto_add_order_items = array_filter($order->getItems(), function (OrderItemInterface $order_item) use ($promotion_data_key) {
+        return $order_item->getData($promotion_data_key);
+      });
+      foreach ($auto_add_order_items as $order_item) {
+        $new_quantity = Calculator::subtract($order_item->getQuantity(), $order_item->getData($promotion_data_key));
+        $order_item->setQuantity($new_quantity);
+        $order_item->unsetData($promotion_data_key);
+      }
     }
   }
 
@@ -353,6 +534,142 @@ class BuyXGetY extends OrderPromotionOfferBase {
     });
 
     return $selected_order_items;
+  }
+
+  /**
+   * Finds the configured purchasable entity amongst the given conditions.
+   *
+   * @param \Drupal\commerce\ConditionGroup $conditions
+   *   The condition group.
+   *
+   * @return \Drupal\commerce\PurchasableEntityInterface|null
+   *   The purchasable entity, or NULL if not found in the conditions.
+   */
+  protected function findSinglePurchasableEntity(ConditionGroup $conditions) {
+    foreach ($conditions->getConditions() as $condition) {
+      if ($condition instanceof PurchasableEntityConditionInterface) {
+        $purchasable_entity_ids = $condition->getPurchasableEntityIds();
+        if (count($purchasable_entity_ids) === 1) {
+          $purchasable_entities = $condition->getPurchasableEntities();
+          return reset($purchasable_entities);
+        }
+      }
+    }
+
+    return NULL;
+  }
+
+  /**
+   * Attempt to find the given purchasable entity amongst the given order items.
+   *
+   * If the given purchasable entity isn't referenced by any order item, create
+   * an order item referencing it so we can automatically add it to the order.
+   *
+   * @param \Drupal\commerce\PurchasableEntityInterface $get_purchasable_entity
+   *   The "get" purchasable entity.
+   * @param \Drupal\commerce_order\Entity\OrderItemInterface[] $order_items
+   *   The order items.
+   *
+   * @return \Drupal\commerce_order\Entity\OrderItemInterface
+   *   An order item referencing the given purchasable entity.
+   */
+  protected function findOrCreateOrderItem(PurchasableEntityInterface $get_purchasable_entity, array $order_items) {
+    foreach ($order_items as $order_item) {
+      $purchased_entity = $order_item->getPurchasedEntity();
+      if ($purchased_entity->getEntityTypeId() == $get_purchasable_entity->getEntityTypeId()
+          && $purchased_entity->id() == $get_purchasable_entity->id()) {
+        return $order_item;
+      }
+    }
+
+    /** @var \Drupal\commerce_order\OrderItemStorageInterface $storage */
+    $storage = $this->entityTypeManager->getStorage('commerce_order_item');
+    $order_item = $storage->createFromPurchasableEntity($get_purchasable_entity, [
+      'quantity' => 0,
+    ]);
+    return $order_item;
+  }
+
+  /**
+   * Calculates the expected get quantity.
+   *
+   * @param array $buy_quantities
+   *   An array of buy quantities.
+   * @param \Drupal\commerce_order\Entity\OrderItemInterface $order_item
+   *   The order item.
+   *
+   * @return string
+   *   The expected get quantity.
+   */
+  protected function calculateExpectedGetQuantity(array $buy_quantities, OrderItemInterface $order_item) {
+    $expected_get_quantity = '0';
+
+    // Ensure that any possible "get" quantity already in the order is always
+    // processed last.
+    if (!$order_item->isNew()) {
+      if (isset($buy_quantities[$order_item->id()])) {
+        $quantity = $buy_quantities[$order_item->id()];
+        unset($buy_quantities[$order_item->id()]);
+        $buy_quantities[$order_item->id()] = $quantity;
+      }
+    }
+
+    $i = 0;
+    while (!empty($buy_quantities)) {
+      $this->sliceQuantities($buy_quantities, $this->configuration['buy_quantity']);
+      $expected_get_quantity = Calculator::add($expected_get_quantity, $this->configuration['get_quantity']);
+
+      // Determine whether the offer reached its limit.
+      if ($this->configuration['offer_limit'] == ++$i) {
+        break;
+      }
+
+      // If the "get" purchasable entity is already in the order, we need to
+      // ensure that the already discounted quantity is not counted towards the
+      // buy quantities.
+      if (!$order_item->isNew()) {
+        $buy_quantities = $this->removeQuantities($buy_quantities, [$order_item->id() => $this->configuration['get_quantity']]);
+      }
+
+      if (array_sum($buy_quantities) < $this->configuration['buy_quantity']) {
+        break;
+      }
+    }
+
+    return $expected_get_quantity;
+  }
+
+  /**
+   * Gets the #states visibility array for the 'auto_add' form element.
+   *
+   * @return array
+   *   An array of visibility options for a form element's #state property.
+   */
+  protected function getAutoAddStatesVisibility() {
+    // The 'auto_add' form element has to be shown if _any_ condition that
+    // provides a purchasable entity is enabled for the 'get' conditions. This
+    // means we need to construct a list of OR statements for #states, which
+    // looks like this:
+    // @code
+    // '#states' => [
+    //   'visible' => [
+    //     [':input[name="some_element"]' => ['checked' => TRUE]],
+    //     'or',
+    //     [':input[name="another_element"]' => ['checked' => TRUE]],
+    //     ...
+    //   ],
+    // ],
+    // @endcode
+    $conditions = $this->getPurchasableEntityConditions();
+    $states_visibility = array_map(function ($value) {
+      return [':input[name="offer[0][target_plugin_configuration][order_buy_x_get_y][get][conditions][products][' . $value . '][enable]"]' => ['checked' => TRUE]];
+    }, array_keys($conditions));
+
+    for ($i = 0; $i < count($conditions) - 1; $i++) {
+      array_splice($states_visibility, $i + 1, 0, 'or');
+    }
+
+    return $states_visibility;
   }
 
   /**
@@ -477,6 +794,18 @@ class BuyXGetY extends OrderPromotionOfferBase {
     $adjustment_amount = $this->rounder->round($adjustment_amount);
 
     return $adjustment_amount;
+  }
+
+  /**
+   * Gets the purchasable entity condition plugin definitions.
+   *
+   * @return array
+   *   The purchasable entity condition plugin definitions.
+   */
+  protected function getPurchasableEntityConditions() {
+    return array_filter($this->conditionManager->getFilteredDefinitions('commerce_promotion', ['commerce_order_item']), function ($definition) {
+      return is_subclass_of($definition['class'], PurchasableEntityConditionInterface::class);
+    });
   }
 
 }

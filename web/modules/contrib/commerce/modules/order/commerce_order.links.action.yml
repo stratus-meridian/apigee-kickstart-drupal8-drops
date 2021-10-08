@@ -15,3 +15,9 @@ entity.commerce_order_item_type.add_form:
   title: 'Add order item type'
   appears_on:
     - entity.commerce_order_item_type.collection
+
+entity.commerce_order.canonical:
+  route_name: entity.commerce_order.canonical
+  title: 'Manage this order'
+  appears_on:
+    - entity.commerce_order.user_view

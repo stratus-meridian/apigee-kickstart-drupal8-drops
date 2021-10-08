@@ -9,7 +9,7 @@
   Drupal.behaviors.commerceCartForm = {
     attach: function (context) {
       // Trigger the "Update" button when Enter is pressed in a quantity field.
-      $('form .views-field-edit-quantity input.form-number', context)
+      $('.quantity-edit-input', context)
         .once('commerce-cart-edit-quantity')
         .keydown(function (event) {
           if (event.keyCode === 13) {

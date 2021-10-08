@@ -55,6 +55,10 @@
     width: 100%;
     max-width: 100%;
   }
+
+  .layout-region-order-secondary .state-machine-transition-form .form-wrapper {
+    margin: 1.25em 0 0.75em;
+  }
 }
 
 /**
@@ -73,4 +77,17 @@
     width: auto;
     padding-right: 0;
   }
+}
+
+/* "Billing information" fieldset button positioning in Seven */
+#block-seven-content input[name="add_billing_information"] {
+  margin-top: 1em;
+}
+
+#block-seven-content input[name="billing_edit"] {
+  margin: 0;
+}
+
+#block-seven-content input[name="hide_profile_form"] {
+  margin: 1em 0 0 0;
 }

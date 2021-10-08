@@ -172,19 +172,21 @@ class UnitPriceWidget extends WidgetBase implements ContainerFactoryPluginInterf
       }
     }
     // If this is a new order item, resolve a default unit price.
-    elseif ($order_item->isNew()) {
+    elseif ($order_item->isNew() && !$order_item->getUnitPrice()) {
       $purchased_entity = $order_item->getPurchasedEntity();
       if ($purchased_entity !== NULL) {
         $order = $order_item->getOrder();
         if ($order === NULL) {
           $form_object = $form_state->getFormObject();
-          assert($form_object instanceof OrderForm);
-          $order = $form_object->getEntity();
-          assert($order instanceof OrderInterface);
+          if ($form_object instanceof OrderForm) {
+            $order = $form_object->getEntity();
+            if ($order instanceof OrderInterface) {
+              $context = new Context($order->getCustomer(), $order->getStore());
+              $unit_price = $this->chainPriceResolver->resolve($purchased_entity, $order_item->getQuantity(), $context);
+              $order_item->setUnitPrice($unit_price, FALSE);
+            }
+          }
         }
-        $context = new Context($order->getCustomer(), $order->getStore());
-        $unit_price = $this->chainPriceResolver->resolve($purchased_entity, $order_item->getQuantity(), $context);
-        $order_item->setUnitPrice($unit_price, FALSE);
       }
     }
     // Put delta mapping in $form_state, so that flagErrors() can use it.

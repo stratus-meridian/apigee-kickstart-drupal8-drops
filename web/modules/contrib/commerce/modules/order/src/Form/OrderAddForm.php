@@ -133,6 +133,8 @@ class OrderAddForm extends FormBase {
     }
     $order = $this->orderStorage->create($order_data);
     $order->save();
+    $values['order_id'] = $order->id();
+    $form_state->setValues($values);
     // Redirect to the edit form to complete the order.
     $form_state->setRedirect('entity.commerce_order.edit_form', ['commerce_order' => $order->id()]);
   }

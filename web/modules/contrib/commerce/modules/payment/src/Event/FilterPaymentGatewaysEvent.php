@@ -2,15 +2,15 @@
 
 namespace Drupal\commerce_payment\Event;
 
+use Drupal\commerce\EventBase;
 use Drupal\commerce_order\Entity\OrderInterface;
-use Symfony\Component\EventDispatcher\Event;
 
 /**
  * Defines the event for filtering the available payment gateways.
  *
  * @see \Drupal\commerce_payment\Event\PaymentEvents
  */
-class FilterPaymentGatewaysEvent extends Event {
+class FilterPaymentGatewaysEvent extends EventBase {
 
   /**
    * The payment gateways.

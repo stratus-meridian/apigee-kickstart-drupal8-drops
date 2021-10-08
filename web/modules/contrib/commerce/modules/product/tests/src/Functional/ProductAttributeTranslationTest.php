@@ -3,6 +3,7 @@
 namespace Drupal\Tests\commerce_product\Functional;
 
 use Drupal\commerce_product\Entity\ProductAttribute;
+use Drupal\views\Tests\ViewTestData;
 
 /**
  * Tests translating product attributes and their values.
@@ -17,9 +18,16 @@ class ProductAttributeTranslationTest extends ProductBrowserTestBase {
    * @var array
    */
   public static $modules = [
+    'commerce_product_test',
     'config_translation',
     'content_translation',
+    'views',
   ];
+
+  /**
+   * {@inheritdoc}
+   */
+  public static $testViews = ['test_attribute_filtered_variations'];
 
   /**
    * {@inheritdoc}
@@ -36,7 +44,7 @@ class ProductAttributeTranslationTest extends ProductBrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  public function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     // Add the French language.
@@ -158,6 +166,75 @@ class ProductAttributeTranslationTest extends ProductBrowserTestBase {
     $this->drupalGet('admin/commerce/product-attributes/manage/color/translate/en/add');
     $this->assertSession()->pageTextContains('Rouge');
     $this->assertSession()->pageTextContains('Bleu');
+  }
+
+  /**
+   * Tests attribute values translation in views exposed filters.
+   */
+  public function testExposedAttributeFilterTranslation() {
+    // Add the Hungarian language.
+    $edit = ['predefined_langcode' => 'hu'];
+    $this->drupalGet('admin/config/regional/language/add');
+    $this->submitForm($edit, 'Add language');
+    \Drupal::languageManager()->reset();
+
+    ViewTestData::createTestViews(self::class, ['commerce_product_test']);
+
+    // Create an attribute, so we can test it displays, too.
+    $attribute = $this->createEntity('commerce_product_attribute', [
+      'id' => 'color',
+      'label' => 'Color',
+    ]);
+    assert($attribute instanceof ProductAttribute);
+    $attribute->save();
+
+    $this->container->get('commerce_product.attribute_field_manager')->createField($attribute, 'default');
+
+    $attribute_values = [];
+    $colors = ['Red', 'Green', 'Black'];
+    foreach ($colors as $color_attribute_value) {
+      $lowercase = strtolower($color_attribute_value);
+      $attribute_values[$lowercase] = $this->createEntity('commerce_product_attribute_value', [
+        'attribute' => $attribute->id(),
+        'name' => $color_attribute_value,
+      ]);
+    }
+
+    // Enable translations.
+    $edit = [
+      'enable_value_translation' => TRUE,
+    ];
+    $this->drupalGet('admin/commerce/product-attributes/manage/color');
+    $this->submitForm($edit, 'Save');
+
+    // Translate the attribute and its values to French.
+    $this->drupalGet('admin/commerce/product-attributes/manage/color/translate/fr/add');
+    $this->assertSession()->pageTextContains('Label');
+    $this->assertSession()->pageTextContains('Value');
+    $edit = [
+      'translation[config_names][commerce_product.commerce_product_attribute.color][label]' => 'Couleur',
+      'values[' . $attribute_values['red']->id() . '][translation][name][0][value]' => 'Rouge',
+      'values[' . $attribute_values['green']->id() . '][translation][name][0][value]' => 'Vert',
+      'values[' . $attribute_values['black']->id() . '][translation][name][0][value]' => 'Noir',
+      // Leave the second value untouched.
+    ];
+    $this->submitForm($edit, 'Save translation');
+
+    $this->drupalGet('variations');
+    $this->assertSession()->elementTextContains('css', 'select[name="attribute_color_target_id[]"] option[value=1]', 'Red');
+    $this->assertSession()->elementTextContains('css', 'select[name="attribute_color_target_id[]"] option[value=2]', 'Green');
+    $this->assertSession()->elementTextContains('css', 'select[name="attribute_color_target_id[]"] option[value=3]', 'Black');
+
+    $this->drupalGet('fr/variations');
+    $this->assertSession()->elementTextContains('css', 'select[name="attribute_color_target_id[]"] option[value=1]', 'Rouge');
+    $this->assertSession()->elementTextContains('css', 'select[name="attribute_color_target_id[]"] option[value=2]', 'Vert');
+    $this->assertSession()->elementTextContains('css', 'select[name="attribute_color_target_id[]"] option[value=3]', 'Noir');
+
+    // Switching to a language attribute values are not translated to.
+    $this->drupalGet('hu/variations');
+    $this->assertSession()->elementTextContains('css', 'select[name="attribute_color_target_id[]"] option[value=1]', 'Red');
+    $this->assertSession()->elementTextContains('css', 'select[name="attribute_color_target_id[]"] option[value=2]', 'Green');
+    $this->assertSession()->elementTextContains('css', 'select[name="attribute_color_target_id[]"] option[value=3]', 'Black');
   }
 
 }

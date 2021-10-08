@@ -49,7 +49,7 @@ class ProductAttributesOverviewFormatterTest extends CommerceKernelTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->installEntitySchema('commerce_product_attribute');

@@ -2,15 +2,15 @@
 
 namespace Drupal\commerce_product\Event;
 
+use Drupal\commerce\EventBase;
 use Drupal\commerce_product\Entity\ProductVariationInterface;
-use Symfony\Component\EventDispatcher\Event;
 
 /**
  * Defines the product variation event.
  *
  * @see \Drupal\commerce_product\Event\ProductEvents
  */
-class ProductVariationEvent extends Event {
+class ProductVariationEvent extends EventBase {
 
   /**
    * The product variation.

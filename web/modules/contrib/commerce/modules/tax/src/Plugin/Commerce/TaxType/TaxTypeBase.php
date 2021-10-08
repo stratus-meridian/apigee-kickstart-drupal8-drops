@@ -162,7 +162,7 @@ abstract class TaxTypeBase extends PluginBase implements TaxTypeInterface, Conta
   public function buildConfigurationForm(array $form, FormStateInterface $form_state) {
     $form['display_inclusive'] = [
       '#type' => 'checkbox',
-      '#title' => t('Display taxes of this type inclusive in product prices.'),
+      '#title' => $this->t('Display taxes of this type inclusive in product prices.'),
       '#default_value' => $this->configuration['display_inclusive'],
     ];
 

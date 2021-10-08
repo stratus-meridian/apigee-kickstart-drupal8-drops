@@ -40,7 +40,7 @@ class PriceCalculatorTest extends OrderKernelTestBase {
   protected $firstUser;
 
   /**
-   * The first test user.
+   * The second test user.
    *
    * @var \Drupal\user\UserInterface
    */
@@ -67,10 +67,11 @@ class PriceCalculatorTest extends OrderKernelTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->installEntitySchema('commerce_promotion');
+    $this->installSchema('commerce_promotion', ['commerce_promotion_usage']);
 
     $promotion = Promotion::create([
       'name' => 'Promotion 1',

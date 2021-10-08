@@ -29,6 +29,7 @@ use Symfony\Component\Routing\Route;
 /**
  * Provides routes for API Doc entities.
  *
+ * @deprecated in 2.x and is removed from 3.x. Use the node "apidoc" bundle instead.
  * @see \Drupal\Core\Entity\Routing\AdminHtmlRouteProvider
  * @see \Drupal\Core\Entity\Routing\DefaultHtmlRouteProvider
  */

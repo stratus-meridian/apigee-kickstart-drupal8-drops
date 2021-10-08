@@ -37,7 +37,7 @@ class CouponRedemptionForm extends FormElement {
       '#cardinality' => 1,
       '#order_id' => NULL,
 
-      '#title' => t('Coupon code'),
+      '#title' => $this->t('Coupon code'),
       '#process' => [
         [$class, 'processForm'],
       ],

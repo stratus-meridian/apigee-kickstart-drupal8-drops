@@ -218,7 +218,7 @@ class ProductVariationListBuilder extends EntityListBuilder implements FormInter
       $form['actions']['#type'] = 'actions';
       $form['actions']['submit'] = [
         '#type' => 'submit',
-        '#value' => t('Save'),
+        '#value' => $this->t('Save'),
         '#button_type' => 'primary',
       ];
     }

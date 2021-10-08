@@ -34,7 +34,7 @@ class FileLinkValidationTest extends KernelTestBase {
    * @var \Drupal\entity_test\Entity\EntityTest
    */
   protected $entity;
-  
+
   /**
    * {@inheritdoc}
    */
@@ -95,7 +95,7 @@ class FileLinkValidationTest extends KernelTestBase {
    *   An absolute URL.
    */
   protected static function getFullUrl($path) {
-    return Url::fromUri('base:/' . drupal_get_path('module', 'file_link_test') . $path, ['absolute' => TRUE])->toString();
+    return Url::fromUri('base:/' . drupal_get_path('module', 'file_link_test') . $path, ['absolute' => TRUE, 'query' => ['foo' => 'bar']])->toString();
   }
 
   /**

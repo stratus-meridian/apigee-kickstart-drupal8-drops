@@ -26,11 +26,12 @@ class CouponAccessTest extends OrderKernelTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->installEntitySchema('commerce_promotion');
     $this->installEntitySchema('commerce_promotion_coupon');
+    $this->installSchema('commerce_promotion', ['commerce_promotion_usage']);
 
     // Create uid: 1 here so that it's skipped in test cases.
     $admin_user = $this->createUser();
@@ -64,7 +65,7 @@ class CouponAccessTest extends OrderKernelTestBase {
     $this->assertFalse($coupon->access('update', $account));
     $this->assertFalse($coupon->access('delete', $account));
 
-    $account = $this->createUser([], ['update commerce_promotion']);
+    $account = $this->createUser([], ['update any commerce_promotion']);
     $this->assertFalse($coupon->access('view', $account));
     $this->assertTrue($coupon->access('update', $account));
     $this->assertTrue($coupon->access('delete', $account));
@@ -84,7 +85,7 @@ class CouponAccessTest extends OrderKernelTestBase {
     $account = $this->createUser([], ['access content']);
     $this->assertFalse($access_control_handler->createAccess('test', $account));
 
-    $account = $this->createUser([], ['update commerce_promotion']);
+    $account = $this->createUser([], ['update any commerce_promotion']);
     $this->assertTrue($access_control_handler->createAccess('test', $account));
 
     $account = $this->createUser([], ['administer commerce_promotion']);

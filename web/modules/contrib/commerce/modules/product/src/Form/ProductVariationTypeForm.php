@@ -73,7 +73,7 @@ class ProductVariationTypeForm extends CommerceBundleEntityFormBase {
     ];
     $form['generateTitle'] = [
       '#type' => 'checkbox',
-      '#title' => t('Generate variation titles based on attribute values.'),
+      '#title' => $this->t('Generate variation titles based on attribute values.'),
       '#default_value' => $variation_type->shouldGenerateTitle(),
     ];
     $form = $this->buildTraitForm($form, $form_state);
@@ -115,7 +115,7 @@ class ProductVariationTypeForm extends CommerceBundleEntityFormBase {
     ];
     $form['attributes'] = [
       '#type' => 'checkboxes',
-      '#title' => t('Attributes'),
+      '#title' => $this->t('Attributes'),
       '#options' => $attribute_options,
       '#default_value' => $used_attributes,
       '#access' => !empty($attribute_options),

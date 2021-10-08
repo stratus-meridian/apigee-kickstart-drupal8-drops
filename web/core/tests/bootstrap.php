@@ -25,19 +25,14 @@ use PHPUnit\Util\Xml;
  *
  * @param string $scan_directory
  *   The directory that should be recursively scanned.
+ *
  * @return array
  *   An associative array of extension directories found within the scanned
  *   directory, keyed by extension name.
  */
 function drupal_phpunit_find_extension_directories($scan_directory) {
   $extensions = [];
-
-  $ignore_directories = explode(',', getenv('SIMPLETEST_IGNORE_DIRECTORIES'));
-  $directory = new \RecursiveDirectoryIterator($scan_directory, \RecursiveDirectoryIterator::FOLLOW_SYMLINKS);
-  $filter = new \RecursiveCallbackFilterIterator($directory, function ($current, $key, $iterator) use ($ignore_directories) {
-    return !in_array($current->getFilename(), $ignore_directories);
-  });
-  $dirs = new \RecursiveIteratorIterator($filter);
+  $dirs = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($scan_directory, \RecursiveDirectoryIterator::FOLLOW_SYMLINKS));
   foreach ($dirs as $dir) {
     if (strpos($dir->getPathname(), '.info.yml') !== FALSE) {
       // Cut off ".info.yml" from the filename for use as the extension name. We

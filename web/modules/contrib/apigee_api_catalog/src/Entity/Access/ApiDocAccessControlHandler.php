@@ -33,6 +33,9 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 /**
  * Access controller for the API Doc entity.
  *
+ * @deprecated in 2.x and is removed from 3.x. Use the node "apidoc" bundle instead.
+ * @see https://github.com/apigee/apigee-api-catalog-drupal/pull/84
+ *
  * @see \Drupal\apigee_api_catalog\Entity\ApiDoc.
  */
 class ApiDocAccessControlHandler extends EntityAccessControlHandler implements EntityHandlerInterface {

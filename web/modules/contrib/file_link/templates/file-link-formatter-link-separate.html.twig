@@ -16,10 +16,10 @@
  * @ingroup themeable
  */
 #}
-{% spaceless %}
+{% apply spaceless %}
   {{ title }}
   {{ link }}
 {% if format and size %}
   ({{ format }}, {{ size }})
 {% endif %}
-{% endspaceless %}
+{% endapply %}

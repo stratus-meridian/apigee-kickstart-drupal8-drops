@@ -3,7 +3,7 @@
 namespace Drupal\commerce_price\Repository;
 
 use CommerceGuys\Intl\Currency\Currency;
-use CommerceGuys\Intl\Currency\CurrencyRepositoryInterface;
+use CommerceGuys\Intl\Currency\CurrencyRepository as ExternalCurrencyRepository;
 use CommerceGuys\Intl\Exception\UnknownCurrencyException;
 use Drupal\commerce_price\Entity\CurrencyInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
@@ -17,7 +17,7 @@ use Drupal\Core\Entity\EntityTypeManagerInterface;
  * Note: This repository doesn't support loading currencies in a non-default
  * locale, since it would be imprecise to map $locale to Drupal's languages.
  */
-class CurrencyRepository implements CurrencyRepositoryInterface {
+class CurrencyRepository extends ExternalCurrencyRepository implements CurrencyRepositoryInterface {
 
   /**
    * The currency storage.
@@ -27,12 +27,14 @@ class CurrencyRepository implements CurrencyRepositoryInterface {
   protected $currencyStorage;
 
   /**
-   * Creates an CurrencyRepository instance.
+   * Constructs a new CurrencyRepository object.
    *
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
    *   The entity type manager.
    */
   public function __construct(EntityTypeManagerInterface $entity_type_manager) {
+    parent::__construct();
+
     $this->currencyStorage = $entity_type_manager->getStorage('commerce_currency');
   }
 
@@ -61,7 +63,6 @@ class CurrencyRepository implements CurrencyRepositoryInterface {
     }
 
     return $all;
-
   }
 
   /**
@@ -96,6 +97,18 @@ class CurrencyRepository implements CurrencyRepositoryInterface {
       'fraction_digits' => $currency->getFractionDigits(),
       'locale' => $currency->language()->getId(),
     ]);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getDefaultFractionDigits(string $currency_code): int {
+    $base_definitions = $this->getBaseDefinitions();
+    if (!isset($base_definitions[$currency_code])) {
+      throw new UnknownCurrencyException($currency_code);
+    }
+
+    return $base_definitions[$currency_code][1];
   }
 
 }

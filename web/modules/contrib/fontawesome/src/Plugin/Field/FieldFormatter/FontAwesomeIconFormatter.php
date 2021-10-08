@@ -27,7 +27,7 @@ class FontAwesomeIconFormatter extends FormatterBase implements ContainerFactory
   /**
    * Drupal configuration service container.
    *
-   * @var Drupal\Core\Config\ConfigFactory
+   * @var \Drupal\Core\Config\ConfigFactory
    */
   protected $configFactory;
 

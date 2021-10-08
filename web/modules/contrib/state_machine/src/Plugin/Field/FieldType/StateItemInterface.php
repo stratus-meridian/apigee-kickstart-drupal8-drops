@@ -48,6 +48,14 @@ interface StateItemInterface extends FieldItemInterface {
   public function getLabel();
 
   /**
+   * Gets the label of the original state.
+   *
+   * @return string
+   *   The label of the original state.
+   */
+  public function getOriginalLabel();
+
+  /**
    * Gets the allowed transitions for the current state.
    *
    * @return \Drupal\state_machine\Plugin\Workflow\WorkflowTransition[]
@@ -56,10 +64,24 @@ interface StateItemInterface extends FieldItemInterface {
   public function getTransitions();
 
   /**
+   * Gets whether the given transition is allowed.
+   *
+   * @param string $transition_id
+   *   The transition ID.
+   *
+   * @return bool
+   *   TRUE if the given transition is allowed, FALSE otherwise.
+   */
+  public function isTransitionAllowed($transition_id);
+
+  /**
    * Applies the given transition, changing the current state.
    *
    * @param \Drupal\state_machine\Plugin\Workflow\WorkflowTransition $transition
    *   The transition to apply.
+   *
+   * @throws \InvalidArgumentException
+   *   Thrown when the transition is not allowed.
    */
   public function applyTransition(WorkflowTransition $transition);
 

@@ -7,11 +7,13 @@ use Drupal\commerce_store\Entity\EntityStoresInterface;
 use Drupal\Core\Datetime\DrupalDateTime;
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\commerce_promotion\Plugin\Commerce\PromotionOffer\PromotionOfferInterface;
+use Drupal\Core\Entity\EntityChangedInterface;
+use Drupal\user\EntityOwnerInterface;
 
 /**
  * Defines the interface for promotions.
  */
-interface PromotionInterface extends ContentEntityInterface, EntityStoresInterface {
+interface PromotionInterface extends ContentEntityInterface, EntityStoresInterface, EntityChangedInterface, EntityOwnerInterface {
 
   const COMPATIBLE_ANY = 'any';
   const COMPATIBLE_NONE = 'none';
@@ -252,6 +254,27 @@ interface PromotionInterface extends ContentEntityInterface, EntityStoresInterfa
   public function setUsageLimit($usage_limit);
 
   /**
+   * Gets the per customer promotion usage limit.
+   *
+   * Represents the maximum number of times the promotion can be used by a customer.
+   * 0 for unlimited.
+   *
+   * @return int
+   *   The per customer promotion usage limit.
+   */
+  public function getCustomerUsageLimit();
+
+  /**
+   * Sets the per customer promotion usage limit.
+   *
+   * @param int $usage_limit_customer
+   *   The per customer promotion usage limit.
+   *
+   * @return $this
+   */
+  public function setCustomerUsageLimit($usage_limit_customer);
+
+  /**
    * Gets the promotion start date/time.
    *
    * The start date/time should always be used in the store timezone.
@@ -399,5 +422,31 @@ interface PromotionInterface extends ContentEntityInterface, EntityStoresInterfa
    *   The order.
    */
   public function apply(OrderInterface $order);
+
+  /**
+   * Allows a promotion to clean up any modifications done to the given order.
+   *
+   * @param \Drupal\commerce_order\Entity\OrderInterface $order
+   *   The order.
+   */
+  public function clear(OrderInterface $order);
+
+  /**
+   * Gets the promotion creation timestamp.
+   *
+   * @return int
+   *   Creation timestamp of the promotion.
+   */
+  public function getCreatedTime();
+
+  /**
+   * Sets the promotion creation timestamp.
+   *
+   * @param int $timestamp
+   *   The promotion creation timestamp.
+   *
+   * @return $this
+   */
+  public function setCreatedTime($timestamp);
 
 }

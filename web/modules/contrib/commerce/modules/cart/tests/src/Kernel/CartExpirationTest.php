@@ -30,7 +30,7 @@ class CartExpirationTest extends CartKernelTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $user = $this->createUser();

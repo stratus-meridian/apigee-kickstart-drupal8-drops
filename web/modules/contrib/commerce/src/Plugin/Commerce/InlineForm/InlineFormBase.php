@@ -102,8 +102,8 @@ abstract class InlineFormBase extends PluginBase implements InlineFormInterface,
    * {@inheritdoc}
    */
   public function buildInlineForm(array $inline_form, FormStateInterface $form_state) {
+    $inline_form['#type'] = 'container';
     $inline_form['#tree'] = TRUE;
-    $inline_form['#theme_wrappers'] = ['container'];
     // Workaround for core bug #2897377.
     $inline_form['#id'] = Html::getId('edit-' . implode('-', $inline_form['#parents']));
     // Automatically validate and submit inline forms.

@@ -31,7 +31,7 @@ class EuropeanUnionVatTest extends OrderKernelTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $plugin_manager = $this->container->get('plugin.manager.commerce_tax_number_type');
@@ -70,12 +70,11 @@ class EuropeanUnionVatTest extends OrderKernelTestBase {
       'CY10259033P', 'CZ25123891', 'CZ991231123', 'CZ7103192745',
       'DE136695978', 'DK13585627', 'EE100594102', 'EL094259216',
       'ES54362315K', 'ESX2482300W', 'ESB58378431', 'FI20774740',
-      'FR40303265045', 'FRK7399859412', 'GB802311781', 'GB123123412123',
-      'GBGD001', 'GBHA500', 'HR33392005962', 'HU12892312', 'IE6433435F',
-      'IE6433435OA', 'IT00743110157', 'LT119511515', 'LT100001919017',
-      'LU15027442', 'LV16137519997', 'MT11679112', 'NL123456789B90',
-      'PL8567346215', 'PT501964842', 'RO18547291', 'SE123456789101',
-      'SI50223054', 'SK2022749618',
+      'FR40303265045', 'FRK7399859412', 'HR33392005962', 'HU12892312',
+      'IE6433435F', 'IE6433435OA', 'IT00743110157', 'LT119511515',
+      'LT100001919017', 'LU15027442', 'LV16137519997', 'MT11679112',
+      'NL123456789B90', 'PL8567346215', 'PT501964842', 'RO18547291',
+      'SE123456789101', 'SI50223054', 'SK2022749618',
     ];
     foreach ($valid_numbers as $number) {
       $this->assertTrue($this->plugin->validate($number), $number);

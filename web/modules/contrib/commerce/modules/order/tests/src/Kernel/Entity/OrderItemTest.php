@@ -39,8 +39,12 @@ class OrderItemTest extends OrderKernelTestBase {
    * @covers ::unsetData
    * @covers ::getCreatedTime
    * @covers ::setCreatedTime
+   * @covers ::isLocked
+   * @covers ::lock
+   * @covers ::unlock
    */
   public function testOrderItem() {
+    /** @var \Drupal\commerce_order\Entity\OrderItemInterface $order_item */
     $order_item = OrderItem::create([
       'type' => 'test',
     ]);
@@ -104,6 +108,12 @@ class OrderItemTest extends OrderKernelTestBase {
 
     $order_item->setCreatedTime(635879700);
     $this->assertEquals(635879700, $order_item->getCreatedTime());
+
+    $this->assertFalse($order_item->isLocked());
+    $order_item->lock();
+    $this->assertTrue($order_item->isLocked());
+    $order_item->unlock();
+    $this->assertFalse($order_item->isLocked());
   }
 
   /**

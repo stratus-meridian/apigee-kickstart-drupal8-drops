@@ -7,6 +7,7 @@ use Drupal\commerce_checkout\Plugin\Commerce\CheckoutFlow\CheckoutFlowInterface;
 use Drupal\Core\Entity\Entity\EntityFormDisplay;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Language\LanguageManagerInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Url;
@@ -55,6 +56,13 @@ class Login extends CheckoutPaneBase implements CheckoutPaneInterface, Container
   protected $clientIp;
 
   /**
+   * The language manager.
+   *
+   * @var \Drupal\Core\Language\LanguageManagerInterface
+   */
+  protected $languageManager;
+
+  /**
    * Constructs a new Login object.
    *
    * @param array $configuration
@@ -75,14 +83,21 @@ class Login extends CheckoutPaneBase implements CheckoutPaneInterface, Container
    *   The user authentication object.
    * @param \Symfony\Component\HttpFoundation\RequestStack $request_stack
    *   The request stack.
+   * @param \Drupal\Core\Language\LanguageManagerInterface $language_manager
+   *   The language manager.
    */
-  public function __construct(array $configuration, $plugin_id, $plugin_definition, CheckoutFlowInterface $checkout_flow, EntityTypeManagerInterface $entity_type_manager, CredentialsCheckFloodInterface $credentials_check_flood, AccountInterface $current_user, UserAuthInterface $user_auth, RequestStack $request_stack) {
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, CheckoutFlowInterface $checkout_flow, EntityTypeManagerInterface $entity_type_manager, CredentialsCheckFloodInterface $credentials_check_flood, AccountInterface $current_user, UserAuthInterface $user_auth, RequestStack $request_stack, LanguageManagerInterface $language_manager = NULL) {
     parent::__construct($configuration, $plugin_id, $plugin_definition, $checkout_flow, $entity_type_manager);
 
     $this->credentialsCheckFlood = $credentials_check_flood;
     $this->currentUser = $current_user;
     $this->userAuth = $user_auth;
     $this->clientIp = $request_stack->getCurrentRequest()->getClientIp();
+    if (!$language_manager) {
+      @trigger_error('Calling ' . __METHOD__ . '() without the $language_manager argument is deprecated in commerce:8.x-2.25 and is removed from commerce:3.x.');
+      $language_manager = \Drupal::languageManager();
+    }
+    $this->languageManager = $language_manager;
   }
 
   /**
@@ -98,7 +113,8 @@ class Login extends CheckoutPaneBase implements CheckoutPaneInterface, Container
       $container->get('commerce.credentials_check_flood'),
       $container->get('current_user'),
       $container->get('user.auth'),
-      $container->get('request_stack')
+      $container->get('request_stack'),
+      $container->get('language_manager')
     );
   }
 
@@ -371,6 +387,9 @@ class Login extends CheckoutPaneBase implements CheckoutPaneInterface, Container
           'name' => $username,
           'pass' => $password,
           'status' => TRUE,
+          'langcode' => $this->languageManager->getCurrentLanguage()->getId(),
+          'preferred_langcode' => $this->languageManager->getCurrentLanguage()->getId(),
+          'preferred_admin_langcode' => $this->languageManager->getCurrentLanguage()->getId(),
         ]);
 
         $form_display = EntityFormDisplay::collectRenderDisplay($account, 'register');

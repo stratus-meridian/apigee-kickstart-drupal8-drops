@@ -205,3 +205,17 @@ function _commerce_entity_theme_suggestions($entity_type_id, array $variables) {
 
   return $suggestions;
 }
+
+/**
+ * Implements hook_page_attachments_alter().
+ */
+function commerce_page_attachments_alter(array &$attachments) {
+  if (isset($attachments['#attached']['html_head'])) {
+    foreach ($attachments['#attached']['html_head'] as $index => &$parts) {
+      if (!isset($parts[1]) || $parts[1] !== 'system_meta_generator') {
+        continue;
+      }
+      $parts[0]['#attributes']['content'] .= '; Commerce 2';
+    }
+  }
+}

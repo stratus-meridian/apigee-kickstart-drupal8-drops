@@ -15,10 +15,10 @@ class PaymentCaptureForm extends PaymentGatewayFormBase {
     $payment = $this->entity;
     $amount = $payment->getAmount();
 
-    $form['#success_message'] = t('Payment captured.');
+    $form['#success_message'] = $this->t('Payment captured.');
     $form['amount'] = [
       '#type' => 'commerce_price',
-      '#title' => t('Amount'),
+      '#title' => $this->t('Amount'),
       '#default_value' => $amount->toArray(),
       '#required' => TRUE,
       '#available_currencies' => [$amount->getCurrencyCode()],

@@ -73,6 +73,11 @@ function commerce_payment_theme() {
       'base hook' => 'commerce_payment_method',
       'render element' => 'elements',
     ],
+    'commerce_payment_total_summary' => [
+      'variables' => [
+        'order_entity' => NULL,
+      ],
+    ],
   ];
 }
 

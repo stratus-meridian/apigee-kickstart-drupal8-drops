@@ -29,6 +29,10 @@ class PaymentMethodAccessCheck {
    *   The access result.
    */
   public function checkAccess(RouteMatchInterface $route_match, AccountInterface $account) {
+    if ($account->isAnonymous()) {
+      // Anonymous users can't manage their payment methods.
+      return AccessResult::forbidden()->addCacheContexts(['user.roles:authenticated']);
+    }
     $result = AccessResult::allowedIfHasPermissions($account, [
       'administer commerce_payment_method',
     ]);

@@ -4,6 +4,12 @@ form:
     theme:
       css/promotion.form.css: {}
 
+admin_list:
+  version: VERSION
+  css:
+    theme:
+      css/commerce_promotion.admin_list.css: {}
+
 coupon_redemption_form:
   version: VERSION
   js:

@@ -27,6 +27,7 @@ class PaymentGatewayListBuilder extends DraggableListBuilder {
    */
   public function buildHeader() {
     $header['label'] = $this->t('Payment gateway');
+    $header['id'] = $this->t('ID');
     $header['mode'] = $this->t('Mode');
     $header['status'] = $this->t('Status');
     return $header + parent::buildHeader();
@@ -42,6 +43,7 @@ class PaymentGatewayListBuilder extends DraggableListBuilder {
     $mode = $modes ? $modes[$payment_gateway_plugin->getMode()] : $this->t('N/A');
     $status = $entity->status() ? $this->t('Enabled') : $this->t('Disabled');
     $row['label'] = $entity->label();
+    $row['id']['#markup'] = $entity->id();
     // $this->weightKey determines whether the table will be rendered as a form.
     if (!empty($this->weightKey)) {
       $row['mode']['#markup'] = $mode;

@@ -40,7 +40,7 @@ class OrderReassignTest extends OrderWebDriverTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $order_item = $this->createEntity('commerce_order_item', [

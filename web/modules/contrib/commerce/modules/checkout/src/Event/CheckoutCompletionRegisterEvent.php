@@ -2,17 +2,17 @@
 
 namespace Drupal\commerce_checkout\Event;
 
+use Drupal\commerce\EventBase;
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Url;
-use Symfony\Component\EventDispatcher\Event;
 
 /**
  * Defines the checkout completion register event.
  *
  * @see \Drupal\commerce_checkout\Event\CheckoutEvents
  */
-class CheckoutCompletionRegisterEvent extends Event {
+class CheckoutCompletionRegisterEvent extends EventBase {
 
   /**
    * The created account.

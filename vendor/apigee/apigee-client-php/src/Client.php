@@ -20,7 +20,6 @@ namespace Apigee\Edge;
 
 use Apigee\Edge\Exception\ApiResponseException;
 use Apigee\Edge\Exception\OauthAuthenticationException;
-use Apigee\Edge\HttpClient\Plugin\AddPathPlugin;
 use Apigee\Edge\HttpClient\Plugin\Authentication\AbstractOauth;
 use Apigee\Edge\HttpClient\Plugin\ResponseHandlerPlugin;
 use Apigee\Edge\HttpClient\Plugin\RetryOauthAuthenticationPlugin;
@@ -28,6 +27,7 @@ use Apigee\Edge\HttpClient\Utility\Builder;
 use Apigee\Edge\HttpClient\Utility\Journal;
 use Apigee\Edge\HttpClient\Utility\JournalInterface;
 use Http\Client\Common\Plugin\AddHostPlugin;
+use Http\Client\Common\Plugin\AddPathPlugin;
 use Http\Client\Common\Plugin\AuthenticationPlugin;
 use Http\Client\Common\Plugin\HeaderDefaultsPlugin;
 use Http\Client\Common\Plugin\HistoryPlugin;
@@ -138,12 +138,12 @@ class Client implements ClientInterface
         array $options = []
     ) {
         $this->authentication = $authentication;
-        $this->endpoint = $endpoint ?: self::DEFAULT_ENDPOINT;
+        $this->endpoint = $endpoint ?: self::EDGE_ENDPOINT;
         $this->resolveConfiguration($options);
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function getJournal(): JournalInterface
     {
@@ -151,7 +151,7 @@ class Client implements ClientInterface
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function getUriFactory(): UriFactory
     {
@@ -159,7 +159,7 @@ class Client implements ClientInterface
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function getEndpoint(): string
     {
@@ -167,7 +167,7 @@ class Client implements ClientInterface
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function getUserAgent(): string
     {
@@ -179,7 +179,7 @@ class Client implements ClientInterface
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function getClientVersion(): string
     {
@@ -187,7 +187,7 @@ class Client implements ClientInterface
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function get($uri, array $headers = []): ResponseInterface
     {
@@ -195,7 +195,7 @@ class Client implements ClientInterface
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function head($uri, array $headers = []): ResponseInterface
     {
@@ -203,7 +203,7 @@ class Client implements ClientInterface
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function post($uri, $body = null, array $headers = []): ResponseInterface
     {
@@ -215,7 +215,7 @@ class Client implements ClientInterface
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function put($uri, $body = null, array $headers = []): ResponseInterface
     {
@@ -227,7 +227,7 @@ class Client implements ClientInterface
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function delete($uri, $body = null, array $headers = []): ResponseInterface
     {
@@ -235,7 +235,7 @@ class Client implements ClientInterface
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function sendRequest(RequestInterface $request): ResponseInterface
     {
@@ -346,7 +346,7 @@ class Client implements ClientInterface
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     protected function getHttpClient(): HttpClient
     {
@@ -381,7 +381,7 @@ class Client implements ClientInterface
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      *
      * @throws \Http\Client\Exception
      */

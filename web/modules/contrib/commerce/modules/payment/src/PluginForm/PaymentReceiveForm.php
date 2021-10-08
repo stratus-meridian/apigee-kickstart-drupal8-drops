@@ -14,10 +14,10 @@ class PaymentReceiveForm extends PaymentGatewayFormBase {
     /** @var \Drupal\commerce_payment\Entity\PaymentInterface $payment */
     $payment = $this->entity;
 
-    $form['#success_message'] = t('Payment received.');
+    $form['#success_message'] = $this->t('Payment received.');
     $form['amount'] = [
       '#type' => 'commerce_price',
-      '#title' => t('Amount'),
+      '#title' => $this->t('Amount'),
       '#default_value' => $payment->getAmount()->toArray(),
       '#required' => TRUE,
     ];

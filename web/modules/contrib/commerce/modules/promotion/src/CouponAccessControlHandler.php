@@ -46,7 +46,7 @@ class CouponAccessControlHandler extends EntityAccessControlHandler {
   public function checkCreateAccess(AccountInterface $account, array $context, $entity_bundle = NULL) {
     return AccessResult::allowedIfHasPermissions($account, [
       'administer commerce_promotion',
-      'update commerce_promotion',
+      'update any commerce_promotion',
     ], 'OR');
   }
 

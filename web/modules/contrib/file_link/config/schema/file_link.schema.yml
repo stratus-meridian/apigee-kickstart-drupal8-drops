@@ -14,6 +14,9 @@ field.field_settings.file_link:
     no_extension:
       type: boolean
       label: 'Allow URLs with no extension'
+    deferred_request:
+      type: boolean
+      label: 'Defer requests to cron and skip immediate validation'
 
 field.value.file_link:
   type: field.value.link
@@ -30,3 +33,6 @@ field.formatter.settings.file_link:
 field.formatter.settings.file_link_separate:
   type: field.formatter.settings.file_link
   label: 'Separate file link format settings'
+
+field.widget.settings.file_link_default:
+  type: field.widget.settings.link_default

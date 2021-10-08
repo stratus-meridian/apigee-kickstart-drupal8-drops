@@ -106,15 +106,15 @@ class Custom extends LocalTaxTypeBase {
 
     $form['display_label'] = [
       '#type' => 'select',
-      '#title' => t('Display label'),
-      '#description' => t('Used to identify the applied tax in order summaries.'),
+      '#title' => $this->t('Display label'),
+      '#description' => $this->t('Used to identify the applied tax in order summaries.'),
       '#options' => $this->getDisplayLabels(),
       '#default_value' => $this->configuration['display_label'],
     ];
     $form['round'] = [
       '#type' => 'checkbox',
-      '#title' => t('Round tax at the order item level'),
-      '#description' => t('Sales taxes are not rounded at the order item level, while VAT-style taxes are rounded.'),
+      '#title' => $this->t('Round tax at the order item level'),
+      '#description' => $this->t('Sales taxes are not rounded at the order item level, while VAT-style taxes are rounded.'),
       '#default_value' => $this->configuration['round'],
     ];
 

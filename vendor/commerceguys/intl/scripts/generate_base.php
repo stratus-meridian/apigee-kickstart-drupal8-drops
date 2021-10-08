@@ -4,12 +4,10 @@ require __DIR__ . '/../vendor/autoload.php';
 
 // Downloaded from http://www.currency-iso.org/en/home/tables/table-a1.html
 $isoCurrencies = __DIR__ . '/assets/c2.xml';
-// Downloaded from https://github.com/unicode-cldr/cldr-core.git
-$currencyData = __DIR__ . '/assets/cldr-core/supplemental/currencyData.json';
-// Downloaded from https://github.com/unicode-cldr/cldr-localenames-full.git
-$localeDirectory = __DIR__ . '/assets/cldr-localenames-full/main/';
-// Downloaded from https://github.com/unicode-cldr/cldr-numbers-full.git
-$numbersDirectory = __DIR__ . '/assets/cldr-numbers-full/main/';
+// Downloaded from https://github.com/unicode-org/cldr-json.git
+$currencyData = __DIR__ . '/assets/cldr/cldr-json/cldr-core/supplemental/currencyData.json';
+$localeDirectory = __DIR__ . '/assets/cldr/cldr-json/cldr-localenames-full/main/';
+$numbersDirectory = __DIR__ . '/assets/cldr/cldr-json/cldr-numbers-full/main/';
 
 // Preflight checks.
 if (!file_exists($currencyData)) {
@@ -35,8 +33,8 @@ if (!function_exists('collator_create')) {
 $ignoredLocales = [
     // Esperanto, Interlingua, Volapuk are made up languages.
     'eo', 'ia', 'vo',
-    // Church Slavic, Manx, Prussian are historical languages.
-    'cu', 'gv', 'prg',
+    // Church Slavic, Manx, Prussian, Sanskrit are historical languages.
+    'cu', 'gv', 'prg', 'sa',
     // Valencian differs from its parent only by a single character (è/é).
     'ca-ES-VALENCIA',
     // Africa secondary languages.

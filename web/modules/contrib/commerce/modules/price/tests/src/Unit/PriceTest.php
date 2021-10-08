@@ -23,7 +23,7 @@ class PriceTest extends UnitTestCase {
   /**
    * {@inheritdoc}
    */
-  public function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->price = new Price('10', 'USD');

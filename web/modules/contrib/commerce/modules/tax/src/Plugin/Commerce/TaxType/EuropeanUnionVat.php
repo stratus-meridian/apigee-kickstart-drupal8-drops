@@ -300,7 +300,9 @@ class EuropeanUnionVat extends LocalTaxTypeBase {
           'id' => 'standard',
           'label' => $labels['standard'],
           'percentages' => [
-            ['number' => '0.19', 'start_date' => '2007-01-01'],
+            ['number' => '0.19', 'start_date' => '2007-01-01', 'end_date' => '2020-06-30'],
+            ['number' => '0.16', 'start_date' => '2020-07-01', 'end_date' => '2020-12-31'],
+            ['number' => '0.19', 'start_date' => '2021-01-01'],
           ],
           'default' => TRUE,
         ],
@@ -308,7 +310,9 @@ class EuropeanUnionVat extends LocalTaxTypeBase {
           'id' => 'reduced',
           'label' => $labels['reduced'],
           'percentages' => [
-            ['number' => '0.07', 'start_date' => '1983-07-01'],
+            ['number' => '0.07', 'start_date' => '1983-07-01', 'end_date' => '2020-06-30'],
+            ['number' => '0.05', 'start_date' => '2020-07-01', 'end_date' => '2020-12-31'],
+            ['number' => '0.07', 'start_date' => '2021-01-01'],
           ],
         ],
       ],
@@ -510,39 +514,6 @@ class EuropeanUnionVat extends LocalTaxTypeBase {
         ],
       ],
     ]);
-    $zones['gb'] = new TaxZone([
-      'id' => 'gb',
-      'label' => $this->t('United Kingdom'),
-      'display_label' => $labels['vat'],
-      'territories' => [
-        ['country_code' => 'GB'],
-        ['country_code' => 'IM'],
-      ],
-      'rates' => [
-        [
-          'id' => 'standard',
-          'label' => $labels['standard'],
-          'percentages' => [
-            ['number' => '0.2', 'start_date' => '2011-01-04'],
-          ],
-          'default' => TRUE,
-        ],
-        [
-          'id' => 'reduced',
-          'label' => $labels['reduced'],
-          'percentages' => [
-            ['number' => '0.05', 'start_date' => '1997-09-01'],
-          ],
-        ],
-        [
-          'id' => 'zero',
-          'label' => $labels['zero'],
-          'percentages' => [
-            ['number' => '0', 'start_date' => '1973-01-01'],
-          ],
-        ],
-      ],
-    ]);
     $zones['gr'] = new TaxZone([
       'id' => 'gr',
       'label' => $this->t('Greece'),
@@ -693,7 +664,9 @@ class EuropeanUnionVat extends LocalTaxTypeBase {
           'id' => 'standard',
           'label' => $labels['standard'],
           'percentages' => [
-            ['number' => '0.23', 'start_date' => '2012-01-01'],
+            ['number' => '0.23', 'start_date' => '2012-01-01', 'end_date' => '2020-08-31'],
+            ['number' => '0.21', 'start_date' => '2020-09-01', 'end_date' => '2021-02-28'],
+            ['number' => '0.23', 'start_date' => '2021-03-01'],
           ],
           'default' => TRUE,
         ],
@@ -986,12 +959,44 @@ class EuropeanUnionVat extends LocalTaxTypeBase {
         ],
       ],
     ]);
+    $zones['pt_20'] = new TaxZone([
+      'id' => 'pt_20',
+      'label' => $this->t('Portugal (Azores)'),
+      'display_label' => $labels['vat'],
+      'territories' => [
+        ['country_code' => 'PT', 'included_postal_codes' => '/(9)[5-9][0-9]{2}-[0-9]{3}/'],
+      ],
+      'rates' => [
+        [
+          'id' => 'standard',
+          'label' => $labels['standard'],
+          'percentages' => [
+            ['number' => '0.18', 'start_date' => '2012-04-01'],
+          ],
+          'default' => TRUE,
+        ],
+        [
+          'id' => 'intermediate',
+          'label' => $labels['intermediate'],
+          'percentages' => [
+            ['number' => '0.9', 'start_date' => '2012-04-01'],
+          ],
+        ],
+        [
+          'id' => 'reduced',
+          'label' => $labels['reduced'],
+          'percentages' => [
+            ['number' => '0.04', 'start_date' => '2012-04-01'],
+          ],
+        ],
+      ],
+    ]);
     $zones['pt_30'] = new TaxZone([
       'id' => 'pt_30',
       'label' => $this->t('Portugal (Madeira)'),
       'display_label' => $labels['vat'],
       'territories' => [
-        ['country_code' => 'PT', 'included_postal_codes' => '/(9)[5-9][0-9]{2}-[0-9]{3}/'],
+        ['country_code' => 'PT', 'included_postal_codes' => '/(9)[0-4][0-9]{2}-[0-9]{3}/'],
       ],
       'rates' => [
         [

@@ -9,6 +9,12 @@ services:
     class: Drupal\commerce_order\AdjustmentTypeManager
     arguments: ['@module_handler', '@cache.discovery']
 
+  commerce_order.availability_manager:
+    class: Drupal\commerce_order\AvailabilityManager
+    tags:
+      - { name: service_collector, tag: commerce.availability_checker, call: addLegacyChecker }
+      - { name: service_collector, tag: commerce_order.availability_checker, call: addChecker }
+
   commerce_order.chain_order_type_resolver:
     class: Drupal\commerce_order\Resolver\ChainOrderTypeResolver
     tags:
@@ -36,11 +42,12 @@ services:
     class: Drupal\commerce_order\OrderRefresh
     arguments: ['@entity_type.manager', '@commerce_price.chain_price_resolver', '@current_user', '@datetime.time']
     tags:
+      - { name: service_collector, call: addPreprocessor, tag: commerce_order.order_preprocessor }
       - { name: service_collector, call: addProcessor, tag: commerce_order.order_processor }
 
   commerce_order.availability_order_processor:
     class: Drupal\commerce_order\AvailabilityOrderProcessor
-    arguments: ['@commerce.availability_manager']
+    arguments: ['@commerce_order.availability_manager', '@entity_type.manager']
     tags:
       - { name: commerce_order.order_processor, priority: 100 }
 

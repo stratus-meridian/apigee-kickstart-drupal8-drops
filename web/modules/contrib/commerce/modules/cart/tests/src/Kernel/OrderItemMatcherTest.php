@@ -47,7 +47,7 @@ class OrderItemMatcherTest extends CartKernelTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->installConfig(['extra_order_item_field']);

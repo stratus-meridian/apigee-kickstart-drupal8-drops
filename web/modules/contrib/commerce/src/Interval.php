@@ -35,7 +35,7 @@ final class Interval {
     if (!is_numeric($number)) {
       throw new \InvalidArgumentException(sprintf('The provided interval number "%s" is not a numeric value.', $number));
     }
-    if (!in_array($unit, ['hour', 'day', 'week', 'month', 'year'])) {
+    if (!in_array($unit, ['minute', 'hour', 'day', 'week', 'month', 'year'])) {
       throw new \InvalidArgumentException(sprintf('Invalid interval unit "%s" provided.', $unit));
     }
 

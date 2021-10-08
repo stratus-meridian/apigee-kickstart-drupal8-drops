@@ -3,8 +3,7 @@ description: Apigee Edge Monetization Drupal integration
 package: Apigee
 
 type: module
-core: 8.x
-core_version_requirement: ^8 || ^9
+core_version_requirement: ^8.7.7 || ^9
 
 dependencies:
   - apigee_edge:apigee_edge
@@ -13,7 +12,7 @@ dependencies:
 
 php: "7.1"
 
-# Information added by Drupal.org packaging script on 2020-05-28
-version: '8.x-1.6'
+# Information added by Drupal.org packaging script on 2021-06-01
+version: '8.x-1.11'
 project: 'apigee_m10n'
-datestamp: 1590646459
+datestamp: 1622567238

@@ -150,13 +150,13 @@ class TaxNumberItem extends FieldItemBase implements TaxNumberItemInterface {
       'type' => [
         'AllowedValues' => [
           'choices' => $this->getAllowedTypes(),
-          'message' => t('Invalid type specified.'),
+          'message' => $this->t('Invalid type specified.'),
         ],
       ],
       'value' => [
         'Length' => [
           'max' => $max_length,
-          'maxMessage' => t('%name: may not be longer than @max characters.', [
+          'maxMessage' => $this->t('%name: may not be longer than @max characters.', [
             '%name' => $this->getFieldDefinition()->getLabel(),
             '@max' => $max_length,
           ]),
@@ -169,7 +169,7 @@ class TaxNumberItem extends FieldItemBase implements TaxNumberItemInterface {
             VerificationResult::STATE_FAILURE,
             VerificationResult::STATE_UNKNOWN,
           ],
-          'message' => t('Invalid verification_state specified.'),
+          'message' => $this->t('Invalid verification_state specified.'),
         ],
       ],
     ]);
@@ -273,7 +273,7 @@ class TaxNumberItem extends FieldItemBase implements TaxNumberItemInterface {
       // Same list as in the european_union_vat tax number plugin.
       $eu_countries = [
         'AT', 'BE', 'BG', 'CY', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI',
-        'FR', 'GB', 'GR', 'HR', 'HU', 'IE', 'IM', 'IT', 'LT', 'LU',
+        'FR', 'GR', 'HR', 'HU', 'IE', 'IM', 'IT', 'LT', 'LU',
         'LV', 'MC', 'MT', 'NL', 'PL', 'PT', 'RO', 'SE', 'SI', 'SK',
       ];
       $countries = array_diff($countries, ['EU']);

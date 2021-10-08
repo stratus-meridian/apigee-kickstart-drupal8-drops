@@ -16,9 +16,9 @@ class ProductListBuilder extends EntityListBuilder {
    * {@inheritdoc}
    */
   public function buildHeader() {
-    $header['title'] = t('Title');
-    $header['type'] = t('Type');
-    $header['status'] = t('Status');
+    $header['title'] = $this->t('Title');
+    $header['type'] = $this->t('Type');
+    $header['status'] = $this->t('Status');
     return $header + parent::buildHeader();
   }
 

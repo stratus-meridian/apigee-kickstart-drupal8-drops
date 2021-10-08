@@ -104,13 +104,14 @@ class Conditions extends FormElement {
     $definitions = $plugin_manager->getFilteredDefinitions($element['#parent_entity_type'], $element['#entity_types']);
     $grouped_definitions = [];
     foreach ($definitions as $plugin_id => $definition) {
-      $category = (string) $definition['category'];
+      $category = $definition['category']->getUntranslatedString();
       $grouped_definitions[$category][$plugin_id] = $definition;
     }
     ksort($grouped_definitions);
     $tab_group = implode('][', array_merge($element['#parents'], ['conditions']));
 
     $element['#attached']['library'][] = 'commerce/conditions';
+    $element['#after_build'] = [[get_called_class(), 'clearValues']];
     $element['#categories'] = [];
 
     // Render vertical tabs only if there is more than a single category.
@@ -133,11 +134,12 @@ class Conditions extends FormElement {
 
     foreach ($grouped_definitions as $category => $definitions) {
       $category_id = preg_replace('/[^a-zA-Z\-]/', '_', strtolower($category));
+      $category_label = (string) current($definitions)['category'];
       $element['#categories'][] = $category_id;
 
       $element[$category_id] = [
         '#type' => $render_vertical_tabs ? 'details' : 'container',
-        '#title' => $category,
+        '#title' => $category_label,
         '#group' => $tab_group,
       ];
       foreach ($definitions as $plugin_id => $definition) {
@@ -169,19 +171,23 @@ class Conditions extends FormElement {
           ],
         ];
         if ($enabled) {
-          $element[$category_id][$plugin_id]['configuration'] = [
-            '#type' => 'commerce_plugin_configuration',
-            '#plugin_type' => 'commerce_condition',
-            '#plugin_id' => $plugin_id,
-            '#default_value' => isset($default_value[$plugin_id]) ? $default_value[$plugin_id] : [],
-            '#states' => [
-              'visible' => [
-                ':input[name="' . $checkbox_name . '"]' => ['checked' => TRUE],
-              ],
+          $inline_form_manager = \Drupal::service('plugin.manager.commerce_inline_form');
+          $inline_form = $inline_form_manager->createInstance('plugin_configuration', [
+            'plugin_type' => 'commerce_condition',
+            'plugin_id' => $plugin_id,
+            'plugin_configuration' => isset($default_value[$plugin_id]) ? $default_value[$plugin_id] : [],
+            'enforce_unique_parents' => FALSE,
+          ]);
+          $element[$category_id][$plugin_id]['configuration']['#inline_form'] = $inline_form;
+          $element[$category_id][$plugin_id]['configuration']['#parents'] = array_merge($element['#parents'], [$category_id, $plugin_id, 'configuration']);
+          $element[$category_id][$plugin_id]['configuration'] = $inline_form->buildInlineForm($element[$category_id][$plugin_id]['configuration'], $form_state);
+          $element[$category_id][$plugin_id]['configuration']['#states'] = [
+            'visible' => [
+              ':input[name="' . $checkbox_name . '"]' => ['checked' => TRUE],
             ],
-            // The element is already keyed by $plugin_id, no need to do it twice.
-            '#enforce_unique_parents' => FALSE,
           ];
+          // The element is already keyed by $plugin_id, no need to do it twice.
+          $element[$category_id][$plugin_id]['configuration']['#enforce_unique_parents'] = FALSE;
         }
       }
     }
@@ -236,6 +242,31 @@ class Conditions extends FormElement {
       }
     }
     $form_state->setValueForElement($element, $value);
+  }
+
+  /**
+   * Clears plugin configuration when a condition plugin gets disabled.
+   *
+   * Implemented as an #after_build callback because #after_build runs before
+   * validation, allowing the values to be cleared early enough to prevent the
+   * "Illegal choice" error.
+   */
+  public static function clearValues(array $element, FormStateInterface $form_state) {
+    $triggering_element = $form_state->getTriggeringElement();
+    if (!$triggering_element) {
+      return $element;
+    }
+    $triggering_element_name = end($triggering_element['#parents']);
+    if ($triggering_element_name === 'enable' && !$triggering_element['#value']) {
+      $user_input = &$form_state->getUserInput();
+      array_pop($triggering_element['#parents']);
+      $values = NestedArray::getValue($user_input, $triggering_element['#parents']);
+      // Clear the configuration when the "enable" checkbox is unchecked.
+      unset($values['configuration']);
+      NestedArray::setValue($user_input, $triggering_element['#parents'], $values);
+    }
+
+    return $element;
   }
 
 }

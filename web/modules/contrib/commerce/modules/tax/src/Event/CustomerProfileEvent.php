@@ -2,16 +2,16 @@
 
 namespace Drupal\commerce_tax\Event;
 
+use Drupal\commerce\EventBase;
 use Drupal\commerce_order\Entity\OrderItemInterface;
 use Drupal\profile\Entity\ProfileInterface;
-use Symfony\Component\EventDispatcher\Event;
 
 /**
  * Defines the customer profile event.
  *
  * @see \Drupal\commerce_tax\Event\TaxEvents
  */
-class CustomerProfileEvent extends Event {
+class CustomerProfileEvent extends EventBase {
 
   /**
    * The customer profile.

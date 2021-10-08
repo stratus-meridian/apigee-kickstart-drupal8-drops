@@ -32,7 +32,7 @@ class PromotionTest extends OrderKernelTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->installEntitySchema('commerce_promotion');
@@ -48,6 +48,8 @@ class PromotionTest extends OrderKernelTestBase {
    * @covers ::setDisplayName
    * @covers ::getDescription
    * @covers ::setDescription
+   * @covers ::getCreatedTime
+   * @covers ::setCreatedTime
    * @covers ::getOrderTypes
    * @covers ::setOrderTypes
    * @covers ::getOrderTypeIds
@@ -69,12 +71,18 @@ class PromotionTest extends OrderKernelTestBase {
    * @covers ::hasCoupon
    * @covers ::getUsageLimit
    * @covers ::setUsageLimit
+   * @covers ::getUsageLimit
+   * @covers ::setUsageLimit
    * @covers ::getStartDate
    * @covers ::setStartDate
    * @covers ::getEndDate
    * @covers ::setEndDate
    * @covers ::isEnabled
    * @covers ::setEnabled
+   * @covers ::getOwner
+   * @covers ::setOwner
+   * @covers ::getOwnerId
+   * @covers ::setOwnerId
    */
   public function testPromotion() {
     $order_type = OrderType::load('default');
@@ -90,6 +98,9 @@ class PromotionTest extends OrderKernelTestBase {
 
     $promotion->setDescription('My Promotion Description');
     $this->assertEquals('My Promotion Description', $promotion->getDescription());
+
+    $promotion->setCreatedTime(635879700);
+    $this->assertEquals(635879700, $promotion->getCreatedTime());
 
     $promotion->setOrderTypes([$order_type]);
     $order_types = $promotion->getOrderTypes();
@@ -151,6 +162,9 @@ class PromotionTest extends OrderKernelTestBase {
     $promotion->setUsageLimit(10);
     $this->assertEquals(10, $promotion->getUsageLimit());
 
+    $promotion->setCustomerUsageLimit(2);
+    $this->assertEquals(2, $promotion->getCustomerUsageLimit());
+
     $date_pattern = DateTimeItemInterface::DATETIME_STORAGE_FORMAT;
     $time = $this->container->get('datetime.time');
     $default_start_date = gmdate($date_pattern, $time->getRequestTime());
@@ -166,6 +180,12 @@ class PromotionTest extends OrderKernelTestBase {
 
     $promotion->setEnabled(TRUE);
     $this->assertEquals(TRUE, $promotion->isEnabled());
+
+    $promotion->setOwnerId(900);
+    $this->assertTrue($promotion->getOwner()->isAnonymous());
+    $this->assertEquals(900, $promotion->getOwnerId());
+    $promotion->save();
+    $this->assertEquals(0, $promotion->getOwnerId());
   }
 
   /**

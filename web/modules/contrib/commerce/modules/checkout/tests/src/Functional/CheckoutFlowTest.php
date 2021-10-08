@@ -120,4 +120,42 @@ class CheckoutFlowTest extends CommerceBrowserTestBase {
     $this->assertEquals(1, $checkout_flow->get('configuration')['panes']['contact_information']['double_entry']);
   }
 
+  /**
+   * Tests that removing a dependency doesn't remove the checkout flow.
+   */
+  public function testCheckoutFlowDependencies() {
+    $this->container->get('module_installer')->install(['commerce_checkout_test']);
+    $this->container = $this->kernel->rebuildContainer();
+    $this->createEntity('commerce_checkout_flow', [
+      'label' => 'Test checkout flow',
+      'id' => 'test_checkout_flow',
+      'plugin' => 'multistep_default',
+    ]);
+    $this->drupalGet('admin/commerce/config/checkout-flows/manage/test_checkout_flow');
+    $edit = [
+      'configuration[panes][checkout_test][weight]' => 1,
+    ];
+    $this->submitForm($edit, 'Save');
+    $checkout_flow = CheckoutFlow::load('test_checkout_flow');
+    $this->assertTrue(in_array('commerce_checkout_test', $checkout_flow->getDependencies()['module']));
+    $this->assertEquals(1, $checkout_flow->get('configuration')['panes']['checkout_test']['weight']);
+
+    $this->container->get('module_installer')->uninstall(['commerce_checkout_test']);
+    $checkout_flow = $this->reloadEntity($checkout_flow);
+    $this->assertNotNull($checkout_flow);
+    $this->assertArrayNotHasKey('checkout_test', $checkout_flow->get('configuration')['panes']);
+    $this->assertEmpty($checkout_flow->getDependencies());
+
+    // Reinstall the module to ensure the dependency is re-added.
+    $this->container->get('module_installer')->install(['commerce_checkout_test']);
+    $this->container = $this->kernel->rebuildContainer();
+    $this->drupalGet('admin/commerce/config/checkout-flows/manage/test_checkout_flow');
+    $edit = [
+      'configuration[panes][checkout_test][weight]' => 1,
+    ];
+    $this->submitForm($edit, 'Save');
+    $checkout_flow = CheckoutFlow::load('test_checkout_flow');
+    $this->assertTrue(in_array('commerce_checkout_test', $checkout_flow->getDependencies()['module']));
+  }
+
 }

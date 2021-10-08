@@ -105,7 +105,7 @@ class OptionsResolver implements Options
 
     private $parentsOptions = [];
 
-    private static $typeAliases = [
+    private const TYPE_ALIASES = [
         'boolean' => 'bool',
         'integer' => 'int',
         'double' => 'float',
@@ -201,7 +201,7 @@ class OptionsResolver implements Options
                 return $this;
             }
 
-            if (isset($params[0]) && null !== ($type = $params[0]->getType()) && self::class === $type->getName() && (!isset($params[1]) || (null !== ($type = $params[1]->getType()) && Options::class === $type->getName()))) {
+            if (isset($params[0]) && null !== ($type = $params[0]->getType()) && self::class === $type->getName() && (!isset($params[1]) || (($type = $params[1]->getType()) instanceof \ReflectionNamedType && Options::class === $type->getName()))) {
                 // Store closure for later evaluation
                 $this->nested[$option][] = $value;
                 $this->defaults[$option] = [];
@@ -232,10 +232,6 @@ class OptionsResolver implements Options
     }
 
     /**
-     * Sets a list of default values.
-     *
-     * @param array $defaults The default values to set
-     *
      * @return $this
      *
      * @throws AccessException If called from a lazy option or normalizer
@@ -468,8 +464,7 @@ class OptionsResolver implements Options
      *
      * The resolved option value is set to the return value of the closure.
      *
-     * @param string   $option     The option name
-     * @param \Closure $normalizer The normalizer
+     * @param string $option The option name
      *
      * @return $this
      *
@@ -512,10 +507,6 @@ class OptionsResolver implements Options
      *
      * The resolved option value is set to the return value of the closure.
      *
-     * @param string   $option       The option name
-     * @param \Closure $normalizer   The normalizer
-     * @param bool     $forcePrepend If set to true, prepend instead of appending
-     *
      * @return $this
      *
      * @throws UndefinedOptionsException If the option is undefined
@@ -532,6 +523,7 @@ class OptionsResolver implements Options
         }
 
         if ($forcePrepend) {
+            $this->normalizers[$option] = $this->normalizers[$option] ?? [];
             array_unshift($this->normalizers[$option], $normalizer);
         } else {
             $this->normalizers[$option][] = $normalizer;
@@ -766,8 +758,6 @@ class OptionsResolver implements Options
      *  - Options have invalid types;
      *  - Options have invalid values.
      *
-     * @param array $options A map of option names to values
-     *
      * @return array The merged and validated options
      *
      * @throws UndefinedOptionsException If an option name is undefined
@@ -842,6 +832,7 @@ class OptionsResolver implements Options
      * @throws OptionDefinitionException If there is a cyclic dependency between
      *                                   lazy options and/or normalizers
      */
+    #[\ReturnTypeWillChange]
     public function offsetGet($option/*, bool $triggerDeprecation = true*/)
     {
         if (!$this->locked) {
@@ -853,7 +844,7 @@ class OptionsResolver implements Options
         // Shortcut for resolved options
         if (isset($this->resolved[$option]) || \array_key_exists($option, $this->resolved)) {
             if ($triggerDeprecation && isset($this->deprecated[$option]) && (isset($this->given[$option]) || $this->calling) && \is_string($this->deprecated[$option])) {
-                @trigger_error(strtr($this->deprecated[$option], ['%name%' => $option]), E_USER_DEPRECATED);
+                @trigger_error(strtr($this->deprecated[$option], ['%name%' => $option]), \E_USER_DEPRECATED);
             }
 
             return $this->resolved[$option];
@@ -925,7 +916,7 @@ class OptionsResolver implements Options
             $invalidTypes = [];
 
             foreach ($this->allowedTypes[$option] as $type) {
-                $type = self::$typeAliases[$type] ?? $type;
+                $type = self::TYPE_ALIASES[$type] ?? $type;
 
                 if ($valid = $this->verifyTypes($type, $value, $invalidTypes)) {
                     break;
@@ -937,7 +928,7 @@ class OptionsResolver implements Options
                 $fmtAllowedTypes = implode('" or "', $this->allowedTypes[$option]);
                 $fmtProvidedTypes = implode('|', array_keys($invalidTypes));
                 $allowedContainsArrayType = \count(array_filter($this->allowedTypes[$option], static function ($item) {
-                    return '[]' === substr(self::$typeAliases[$item] ?? $item, -2);
+                    return str_ends_with(self::TYPE_ALIASES[$item] ?? $item, '[]');
                 })) > 0;
 
                 if (\is_array($value) && $allowedContainsArrayType) {
@@ -1012,7 +1003,7 @@ class OptionsResolver implements Options
             }
 
             if ('' !== $deprecationMessage) {
-                @trigger_error(strtr($deprecationMessage, ['%name%' => $option]), E_USER_DEPRECATED);
+                @trigger_error(strtr($deprecationMessage, ['%name%' => $option]), \E_USER_DEPRECATED);
             }
         }
 
@@ -1082,6 +1073,7 @@ class OptionsResolver implements Options
      *
      * @see \ArrayAccess::offsetExists()
      */
+    #[\ReturnTypeWillChange]
     public function offsetExists($option)
     {
         if (!$this->locked) {
@@ -1094,8 +1086,11 @@ class OptionsResolver implements Options
     /**
      * Not supported.
      *
+     * @return void
+     *
      * @throws AccessException
      */
+    #[\ReturnTypeWillChange]
     public function offsetSet($option, $value)
     {
         throw new AccessException('Setting options via array access is not supported. Use setDefault() instead.');
@@ -1104,8 +1099,11 @@ class OptionsResolver implements Options
     /**
      * Not supported.
      *
+     * @return void
+     *
      * @throws AccessException
      */
+    #[\ReturnTypeWillChange]
     public function offsetUnset($option)
     {
         throw new AccessException('Removing options via array access is not supported. Use remove() instead.');
@@ -1122,6 +1120,7 @@ class OptionsResolver implements Options
      *
      * @see \Countable::count()
      */
+    #[\ReturnTypeWillChange]
     public function count()
     {
         if (!$this->locked) {
@@ -1220,7 +1219,7 @@ class OptionsResolver implements Options
 
     private function getParameterClassName(\ReflectionParameter $parameter): ?string
     {
-        if (!($type = $parameter->getType()) || $type->isBuiltin()) {
+        if (!($type = $parameter->getType()) instanceof \ReflectionNamedType || $type->isBuiltin()) {
             return null;
         }
 

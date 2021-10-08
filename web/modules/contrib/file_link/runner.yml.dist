@@ -20,8 +20,13 @@ drupal:
       extension_discovery_scan_tests: true
 
 commands:
+  drupal:patch-core:
+    - { task: "remove", file: "2943172-kernel-test-base-60.patch" }
+    - 'wget https://www.drupal.org/files/issues/2021-01-27/2943172-kernel-test-base-60.patch'
+    - 'patch -N -d build -p1 < 2943172-kernel-test-base-60.patch || true'
   drupal:site-setup:
     - { task: "symlink", from: "../../..", to: "${drupal.root}/modules/custom/file_link" }
+    - { task: "run", command: "drupal:patch-core" }
     - { task: "run", command: "drupal:drush-setup" }
     - { task: "run", command: "drupal:settings-setup" }
     - { task: "run", command: "setup:phpunit" }

@@ -2,14 +2,14 @@
 
 namespace Drupal\commerce\Event;
 
-use Symfony\Component\EventDispatcher\Event;
+use Drupal\commerce\EventBase;
 
 /**
  * Defines the event for filtering the available conditions.
  *
  * @see \Drupal\commerce_payment\Event\PaymentEvents
  */
-class FilterConditionsEvent extends Event {
+class FilterConditionsEvent extends EventBase {
 
   /**
    * The condition definitions.

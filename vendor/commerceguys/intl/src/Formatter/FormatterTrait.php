@@ -124,13 +124,7 @@ trait FormatterTrait
             $number = strtr($number, $this->digits[$numberingSystem]);
         }
         // Localize symbols.
-        $replacements = [
-            '.' => $numberFormat->getDecimalSeparator(),
-            ',' => $numberFormat->getGroupingSeparator(),
-            '+' => $numberFormat->getPlusSign(),
-            '-' => $numberFormat->getMinusSign(),
-            '%' => $numberFormat->getPercentSign(),
-        ];
+        $replacements = $this->getLocalizedSymbols($numberFormat);
         $number = strtr($number, $replacements);
 
         return $number;
@@ -149,15 +143,10 @@ trait FormatterTrait
      */
     protected function parseNumber($number, NumberFormat $numberFormat)
     {
-        $replacements = [
-            $numberFormat->getGroupingSeparator() => '',
-            // Convert the localized symbols back to their original form.
-            $numberFormat->getDecimalSeparator() => '.',
-            $numberFormat->getPlusSign() => '+',
-            $numberFormat->getMinusSign() => '-',
-            $numberFormat->getPercentSign() => '%',
-
-            // Strip whitespace (spaces and non-breaking spaces).
+        // Convert localized symbols back to their original form.
+        $replacements = array_flip($this->getLocalizedSymbols($numberFormat));
+        // Strip whitespace (spaces and non-breaking spaces).
+        $replacements += [
             ' ' => '',
             chr(0xC2) . chr(0xA0) => '',
         ];
@@ -168,6 +157,8 @@ trait FormatterTrait
         }
         $number = strtr($number, $replacements);
 
+        // Strip grouping separators.
+        $number = str_replace(',', '', $number);
         // Convert the accounting format for negative numbers.
         if (substr($number, 0, 1) == '(' && substr($number, -1, 1) == ')') {
             $number = '-' . str_replace(['(', ')'], '', $number);
@@ -212,4 +203,15 @@ trait FormatterTrait
      * @return string[] The patterns, keyed by style.
      */
     abstract protected function getAvailablePatterns(NumberFormat $numberFormat);
+
+    /**
+     * Gets the localized symbols for the provided number format.
+     *
+     * Used to localize the number in localizeNumber().
+     *
+     * @param NumberFormat $numberFormat The number format.
+     *
+     * @return array
+     */
+    abstract protected function getLocalizedSymbols(NumberFormat $numberFormat): array;
 }

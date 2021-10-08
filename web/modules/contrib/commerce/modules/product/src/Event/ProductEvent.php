@@ -2,15 +2,15 @@
 
 namespace Drupal\commerce_product\Event;
 
+use Drupal\commerce\EventBase;
 use Drupal\commerce_product\Entity\ProductInterface;
-use Symfony\Component\EventDispatcher\Event;
 
 /**
  * Defines the product event.
  *
  * @see \Drupal\commerce_product\Event\ProductEvents
  */
-class ProductEvent extends Event {
+class ProductEvent extends EventBase {
 
   /**
    * The product.

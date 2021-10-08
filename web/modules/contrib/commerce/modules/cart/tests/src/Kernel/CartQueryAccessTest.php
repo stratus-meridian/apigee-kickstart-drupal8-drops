@@ -24,7 +24,7 @@ class CartQueryAccessTest extends CartKernelTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     // Create uid: 1 here so that it's skipped in test cases.

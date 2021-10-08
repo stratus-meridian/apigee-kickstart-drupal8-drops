@@ -59,7 +59,7 @@ class ManualPaymentAdminTest extends CommerceBrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->paymentGateway = $this->createEntity('commerce_payment_gateway', [
@@ -105,7 +105,7 @@ class ManualPaymentAdminTest extends CommerceBrowserTestBase {
    */
   public function testPaymentCreation() {
     $this->drupalGet($this->paymentUri . '/add');
-    $this->assertSession()->pageTextContains('Manual example');
+    $this->assertSession()->pageTextContains('Cash on delivery');
     $this->getSession()->getPage()->pressButton('Continue');
     $this->submitForm(['payment[amount][number]' => '100'], 'Add payment');
     $this->assertSession()->addressEquals($this->paymentUri);
@@ -119,11 +119,11 @@ class ManualPaymentAdminTest extends CommerceBrowserTestBase {
     $this->assertEquals('Pending', $payment->getState()->getLabel());
 
     $this->drupalGet($this->paymentUri . '/add');
-    $this->assertSession()->pageTextContains('Manual example');
+    $this->assertSession()->pageTextContains('Cash on delivery');
     $this->getSession()->getPage()->pressButton('Continue');
     $this->submitForm(['payment[amount][number]' => '100', 'payment[received]' => TRUE], 'Add payment');
     $this->assertSession()->addressEquals($this->paymentUri);
-    $this->assertSession()->pageTextContains('Completed');
+    $this->assertSession()->elementContains('css', 'table tbody tr:nth-child(2) td:nth-child(2)', 'Completed');
 
     \Drupal::entityTypeManager()->getStorage('commerce_payment')->resetCache([2]);
     /** @var \Drupal\commerce_payment\Entity\PaymentInterface $payment */
@@ -149,7 +149,7 @@ class ManualPaymentAdminTest extends CommerceBrowserTestBase {
     $this->submitForm(['payment[amount][number]' => '10'], 'Receive');
     $this->assertSession()->addressEquals($this->paymentUri);
     $this->assertSession()->pageTextNotContains('Pending');
-    $this->assertSession()->pageTextContains('Completed');
+    $this->assertSession()->elementContains('css', 'table tbody tr td:nth-child(2)', 'Completed');
 
     \Drupal::entityTypeManager()->getStorage('commerce_payment')->resetCache([$payment->id()]);
     $payment = Payment::load($payment->id());
@@ -170,7 +170,7 @@ class ManualPaymentAdminTest extends CommerceBrowserTestBase {
     $this->drupalGet($this->paymentUri . '/' . $payment->id() . '/operation/refund');
     $this->submitForm(['payment[amount][number]' => '10'], 'Refund');
     $this->assertSession()->addressEquals($this->paymentUri);
-    $this->assertSession()->pageTextNotContains('Completed');
+    $this->assertSession()->elementNotContains('css', 'table tbody tr td:nth-child(2)', 'Completed');
     $this->assertSession()->pageTextContains('Refunded');
 
     \Drupal::entityTypeManager()->getStorage('commerce_payment')->resetCache([$payment->id()]);

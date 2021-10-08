@@ -42,6 +42,10 @@ class OrderItemAccessControlHandler extends CoreEntityAccessControlHandler {
     else {
       $bundle = $entity->bundle();
       $result = AccessResult::allowedIfHasPermission($account, "manage $bundle commerce_order_item");
+      // For draft orders, grant access if the order item is not locked.
+      if ($order->getState()->getId() === 'draft') {
+        $result = $result->andIf(AccessResult::allowedIf(!$entity->isLocked()));
+      }
     }
 
     return $result;

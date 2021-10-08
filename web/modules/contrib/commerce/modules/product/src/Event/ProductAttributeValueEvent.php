@@ -2,15 +2,15 @@
 
 namespace Drupal\commerce_product\Event;
 
+use Drupal\commerce\EventBase;
 use Drupal\commerce_product\Entity\ProductAttributeValueInterface;
-use Symfony\Component\EventDispatcher\Event;
 
 /**
  * Defines the product attribute value event.
  *
  * @see \Drupal\commerce_product\Event\ProductEvents
  */
-class ProductAttributeValueEvent extends Event {
+class ProductAttributeValueEvent extends EventBase {
 
   /**
    * The product attribute value.

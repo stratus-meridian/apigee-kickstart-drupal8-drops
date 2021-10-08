@@ -13,6 +13,17 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\field\FieldStorageConfigInterface;
 
 /**
+ * Implements hook_theme().
+ */
+function commerce_tax_theme($existing, $type, $theme, $path) {
+  return [
+    'commerce_tax_resources' => [
+      'variables' => [],
+    ],
+  ];
+}
+
+/**
  * Implements hook_entity_base_field_info().
  */
 function commerce_tax_entity_base_field_info(EntityTypeInterface $entity_type) {

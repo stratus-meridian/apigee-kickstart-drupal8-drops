@@ -18,4 +18,5 @@ settings:
   title: 1
   file_extensions: 'txt md'
   no_extension: true
+  deferred_request: false
 field_type: file_link

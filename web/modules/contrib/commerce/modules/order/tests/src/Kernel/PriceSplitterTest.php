@@ -32,7 +32,7 @@ class PriceSplitterTest extends OrderKernelTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $user = $this->createUser(['mail' => $this->randomString() . '@example.com']);

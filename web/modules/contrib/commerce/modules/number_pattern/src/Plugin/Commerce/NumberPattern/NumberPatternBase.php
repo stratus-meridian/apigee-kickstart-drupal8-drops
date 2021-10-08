@@ -93,7 +93,7 @@ abstract class NumberPatternBase extends PluginBase implements NumberPatternInte
    * {@inheritdoc}
    */
   public function buildConfigurationForm(array $form, FormStateInterface $form_state) {
-    $entity_type_id = $form_state->getValue('targetEntityType');
+    $entity_type_id = $form_state->get('target_entity_type');
     $token_types = ['pattern'];
     if ($entity_type_id) {
       $token_types[] = $entity_type_id;

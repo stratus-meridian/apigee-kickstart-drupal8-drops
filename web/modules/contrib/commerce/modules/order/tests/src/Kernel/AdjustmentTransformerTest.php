@@ -24,7 +24,7 @@ class AdjustmentTransformerTest extends OrderKernelTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->adjustmentTransformer = $this->container->get('commerce_order.adjustment_transformer');

@@ -2,10 +2,10 @@
 
 namespace Drupal\commerce_product\Event;
 
+use Drupal\commerce\EventBase;
 use Drupal\commerce_product\Entity\ProductInterface;
-use Symfony\Component\EventDispatcher\Event;
 
-class FilterVariationsEvent extends Event {
+class FilterVariationsEvent extends EventBase {
 
   /**
    * The parent product.

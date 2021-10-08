@@ -26,11 +26,12 @@ class OrderItemTable extends FormatterBase {
     /** @var \Drupal\commerce_order\Entity\OrderInterface $order */
     $order = $items->getEntity();
     $elements = [];
+    $order_item_ids = array_column($order->get('order_items')->getValue(), 'target_id');
     $elements[0] = [
       '#type' => 'view',
       // @todo Allow the view to be configurable.
       '#name' => 'commerce_order_item_table',
-      '#arguments' => [$order->id()],
+      '#arguments' => $order_item_ids ? [implode('+', $order_item_ids)] : NULL,
       '#embed' => TRUE,
     ];
 

@@ -104,6 +104,9 @@ class Price extends FormElement {
 
     $element['#tree'] = TRUE;
     $element['#attributes']['class'][] = 'form-type-commerce-price';
+    // Provide an example to the end user so that they know which decimal
+    // separator to use. This is the same pattern Drupal core uses.
+    $number_formatter = \Drupal::service('commerce_price.number_formatter');
 
     $element['number'] = [
       '#type' => 'commerce_number',
@@ -116,6 +119,7 @@ class Price extends FormElement {
       '#min_fraction_digits' => min($fraction_digits),
       '#min' => $element['#allow_negative'] ? NULL : 0,
       '#error_no_message' => TRUE,
+      '#description' => t('Format: @format', ['@format' => $number_formatter->format('9.99')]),
     ];
     if (isset($element['#ajax'])) {
       $element['number']['#ajax'] = $element['#ajax'];

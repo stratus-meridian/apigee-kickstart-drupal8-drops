@@ -13,7 +13,7 @@ class SwissVatTest extends EuropeanUnionVatTest {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->taxType = TaxType::create([
@@ -59,6 +59,16 @@ class SwissVatTest extends EuropeanUnionVatTest {
     $plugin->apply($order);
     $adjustments = $order->collectAdjustments();
     $this->assertCount(0, $adjustments);
+  }
+
+  /**
+   * @covers ::getZones
+   */
+  public function testGetZones() {
+    /** @var \Drupal\commerce_tax\Plugin\Commerce\TaxType\LocalTaxTypeInterface $plugin */
+    $plugin = $this->taxType->getPlugin();
+    $zones = $plugin->getZones();
+    $this->assertArrayHasKey('ch', $zones);
   }
 
 }

@@ -14,37 +14,34 @@ class TaxZoneTest extends CommerceKernelTestBase {
 
   /**
    * @covers ::__construct
-   *
-   * @expectedException \InvalidArgumentException
    */
   public function testMissingProperty() {
+    $this->expectException(\InvalidArgumentException::class);
     $definition = [
       'id' => 'test',
     ];
-    $zone = new TaxZone($definition);
+    new TaxZone($definition);
   }
 
   /**
    * @covers ::__construct
-   *
-   * @expectedException \InvalidArgumentException
    */
   public function testInvalidTerritories() {
+    $this->expectException(\InvalidArgumentException::class);
     $definition = [
       'id' => 'test',
       'label' => 'Test',
       'display_label' => 'VAT',
       'territories' => 'WRONG',
     ];
-    $zone = new TaxZone($definition);
+    new TaxZone($definition);
   }
 
   /**
    * @covers ::__construct
-   *
-   * @expectedException \InvalidArgumentException
    */
   public function testInvalidRates() {
+    $this->expectException(\InvalidArgumentException::class);
     $definition = [
       'id' => 'test',
       'label' => 'Test',
@@ -54,7 +51,7 @@ class TaxZoneTest extends CommerceKernelTestBase {
       ],
       'rates' => 'WRONG',
     ];
-    $zone = new TaxZone($definition);
+    new TaxZone($definition);
   }
 
   /**
@@ -67,6 +64,7 @@ class TaxZoneTest extends CommerceKernelTestBase {
    * @covers ::getRate
    * @covers ::getDefaultRate
    * @covers ::match
+   * @covers ::toArray
    */
   public function testValid() {
     // Can't use a unit test because DrupalDateTime objects use \Drupal.
@@ -107,6 +105,7 @@ class TaxZoneTest extends CommerceKernelTestBase {
     $serbian_address = new Address('RS');
     $this->assertTrue($zone->match($irish_address));
     $this->assertFalse($zone->match($serbian_address));
+    $this->assertEquals($definition, $zone->toArray());
   }
 
 }

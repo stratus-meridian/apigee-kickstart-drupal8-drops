@@ -5,6 +5,7 @@
  * Install, update and uninstall functions for the Order module.
  */
 
+use Drupal\commerce\CommerceContentEntityStorageSchema;
 use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\Core\Session\AccountInterface;
 
@@ -206,4 +207,92 @@ function commerce_order_update_8209() {
     }
     $view->save(TRUE);
   }
+}
+
+/**
+ * Ensure new field indexes on the order entity.
+ */
+function commerce_order_update_8210() {
+  $entity_type_manager = \Drupal::entityTypeManager();
+  $definition_update_manager = \Drupal::entityDefinitionUpdateManager();
+
+  // Get the current order entity type definition, ensure the storage schema
+  // class is set.
+  $entity_type = $entity_type_manager->getDefinition('commerce_order')
+    ->setHandlerClass('storage_schema', CommerceContentEntityStorageSchema::class);
+
+  // Regenerate entity type indexes.
+  $definition_update_manager->updateEntityType($entity_type);
+}
+
+/**
+ * Add the 'locked' field to 'commerce_order_item' entities.
+ */
+function commerce_order_update_8211() {
+  $storage_definition = BaseFieldDefinition::create('boolean')
+    ->setLabel(t('Locked'))
+    ->setSettings([
+      'on_label' => t('Yes'),
+      'off_label' => t('No'),
+    ])
+    ->setDefaultValue(FALSE)
+    ->setInitialValue(FALSE);
+
+  $update_manager = \Drupal::entityDefinitionUpdateManager();
+  $update_manager->installFieldStorageDefinition('locked', 'commerce_order_item', 'commerce_order_item', $storage_definition);
+}
+
+/**
+ * Update the order_number field definition.
+ */
+function commerce_order_update_8212() {
+  $definition_update_manager = \Drupal::service('entity.definition_update_manager');
+  $definition_update_manager->updateFieldStorageDefinition($definition_update_manager->getFieldStorageDefinition('order_number', 'commerce_order'));
+}
+
+/**
+ * Add the 'balance' field to the 'default' view mode for all order bundles.
+ */
+function commerce_order_update_8213() {
+  $bundles = array_keys(\Drupal::service('entity_type.bundle.info')->getBundleInfo('commerce_order'));
+  $storage = \Drupal::entityTypeManager()->getStorage('entity_view_display');
+  foreach ($bundles as $bundle) {
+    /** @var \Drupal\Core\Entity\Display\EntityViewDisplayInterface $default_display */
+    $default_display = $storage->load('commerce_order.' . $bundle . '.default');
+    if (!$default_display) {
+      continue;
+    }
+    $default_display->setComponent('balance', [
+      'type' => 'commerce_price_default',
+      'label' => 'inline',
+    ]);
+    $default_display->save();
+  }
+}
+
+/**
+ * Add the 'version' field to 'commerce_order' entities.
+ */
+function commerce_order_update_8214() {
+  $storage_definition = BaseFieldDefinition::create('integer')
+    ->setLabel(t('Version'))
+    ->setDescription(t('The order version number, it gets incremented on each save.'))
+    ->setReadOnly(TRUE)
+    ->setSetting('unsigned', TRUE)
+    ->setDefaultValue(0)
+    // Ensure any existing orders get set to version 1.
+    ->setInitialValue(1);
+
+  $update_manager = \Drupal::entityDefinitionUpdateManager();
+  $update_manager->installFieldStorageDefinition('version', 'commerce_order', 'commerce_order', $storage_definition);
+
+  return t('The order version number field was created.');
+}
+
+/**
+ * Update the state field definition.
+ */
+function commerce_order_update_8215() {
+  $definition_update_manager = \Drupal::entityDefinitionUpdateManager();
+  $definition_update_manager->updateFieldStorageDefinition($definition_update_manager->getFieldStorageDefinition('state', 'commerce_order'));
 }

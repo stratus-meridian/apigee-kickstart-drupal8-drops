@@ -124,6 +124,19 @@ interface PaymentGatewayInterface extends PluginWithFormsInterface, Configurable
   public function buildPaymentOperations(PaymentInterface $payment);
 
   /**
+   * Builds a label for the given AVS response code and card type.
+   *
+   * @param string $avs_response_code
+   *   The AVS response code.
+   * @param string $card_type
+   *   The card type.
+   *
+   * @return string|null
+   *   The label, or NULL if not available.
+   */
+  public function buildAvsResponseCodeLabel($avs_response_code, $card_type);
+
+  /**
    * Converts the given amount to its minor units.
    *
    * For example, 9.99 USD becomes 999.
@@ -133,6 +146,11 @@ interface PaymentGatewayInterface extends PluginWithFormsInterface, Configurable
    *
    * @return int
    *   The amount in minor units, as an integer.
+   *
+   * @deprecated
+   *   This method was replaced with MinorUnitsConverter::toMinorUnits().
+   *
+   * @see \Drupal\commerce_price\MinorUnitsConverter::toMinorUnits()
    */
   public function toMinorUnits(Price $amount);
 

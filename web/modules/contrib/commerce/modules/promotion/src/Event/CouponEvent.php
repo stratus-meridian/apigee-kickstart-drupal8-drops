@@ -2,15 +2,15 @@
 
 namespace Drupal\commerce_promotion\Event;
 
+use Drupal\commerce\EventBase;
 use Drupal\commerce_promotion\Entity\CouponInterface;
-use Symfony\Component\EventDispatcher\Event;
 
 /**
  * Defines the coupon event.
  *
  * @see \Drupal\commerce_promotion\Event\PromotionEvents
  */
-class CouponEvent extends Event {
+class CouponEvent extends EventBase {
 
   /**
    * The coupon.
