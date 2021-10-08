@@ -2,15 +2,15 @@
 
 namespace Drupal\commerce_cart\Event;
 
+use Drupal\commerce\EventBase;
 use Drupal\commerce_order\Entity\OrderInterface;
-use Symfony\Component\EventDispatcher\Event;
 
 /**
  * Defines the cart empty event.
  *
  * @see \Drupal\commerce_cart\Event\CartEvents
  */
-class CartEmptyEvent extends Event {
+class CartEmptyEvent extends EventBase {
 
   /**
    * The cart order.

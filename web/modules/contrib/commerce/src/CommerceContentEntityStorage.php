@@ -108,7 +108,7 @@ class CommerceContentEntityStorage extends SqlContentEntityStorage {
   /**
    * Gets the event name for the given hook.
    *
-   * Created using the the entity type's module name and ID.
+   * Created using the entity type's module name and ID.
    * For example, the 'presave' hook for commerce_order_item entities maps
    * to the 'commerce_order.commerce_order_item.presave' event name.
    *

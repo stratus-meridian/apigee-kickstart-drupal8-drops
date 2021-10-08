@@ -5,6 +5,7 @@ namespace Drupal\file_link\Plugin\Validation\Constraint;
 use Drupal\Core\Site\Settings;
 use Drupal\Core\Url;
 use Drupal\file_link\Plugin\Field\FieldType\FileLinkItem;
+use Drupal\file_link\Plugin\QueueWorker\FileLinkMetadataUpdate;
 use GuzzleHttp\Exception\RequestException;
 use Symfony\Component\Validator\Constraint;
 use Symfony\Component\Validator\ConstraintValidatorInterface;
@@ -72,7 +73,7 @@ class LinkToFileConstraint extends Constraint implements ConstraintValidatorInte
         $is_valid = FALSE;
       }
 
-      if ($is_valid) {
+      if ($is_valid && !$this->hasDeferredRequest($link)) {
         // Check for redirect response and get effective URL if any.
         $url = $this->getEffectiveUrl($url);
 
@@ -146,7 +147,24 @@ class LinkToFileConstraint extends Constraint implements ConstraintValidatorInte
   }
 
   /**
+   * Check whereas given link field needs an extension.
+   *
+   * @param \Drupal\file_link\Plugin\Field\FieldType\FileLinkItem $link
+   *   Link item.
+   *
+   * @return bool
+   *   Whereas link item needs an extension.
+   */
+  protected function hasDeferredRequest(FileLinkItem $link) {
+    return !FileLinkMetadataUpdate::isProcessing() && $link->getFieldDefinition()->getSetting('deferred_request');
+  }
+
+  /**
    * Check whereas basename has a valid extension.
+   *
+   * Validation copied from file_validate_extensions() with the only difference
+   * that file basename should be parsed for basename, to avoid issue with the
+   * query parameters passed.
    *
    * @param string $basename
    *   URL path basename.
@@ -155,12 +173,14 @@ class LinkToFileConstraint extends Constraint implements ConstraintValidatorInte
    *
    * @return bool
    *   Whereas basename has a valid extension.
+   *
+   * @see file_validate_extensions()
    */
   protected function hasValidExtension($basename, FileLinkItem $link) {
     $extensions = trim($link->getFieldDefinition()->getSetting('file_extensions'));
     if (!empty($extensions)) {
       $regex = '/\.(' . preg_replace('/ +/', '|', preg_quote($extensions)) . ')$/i';
-      return (bool) preg_match($regex, $basename) !== FALSE;
+      return (bool) preg_match($regex, parse_url($basename, PHP_URL_PATH)) !== FALSE;
     }
     return TRUE;
   }

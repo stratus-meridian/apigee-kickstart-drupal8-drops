@@ -3,6 +3,7 @@
 namespace Drupal\commerce_order\Plugin\Field\FieldWidget;
 
 use Drupal\commerce\InlineFormManager;
+use Drupal\Component\Utility\Html;
 use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Field\FieldDefinitionInterface;
@@ -96,19 +97,57 @@ class BillingProfileWidget extends WidgetBase implements ContainerFactoryPluginI
         'uid' => 0,
       ]);
     }
-    $inline_form = $this->inlineFormManager->createInstance('customer_profile', [
-      'profile_scope' => 'billing',
-      'available_countries' => $store->getBillingCountries(),
-      'address_book_uid' => $order->getCustomerId(),
-      'admin' => TRUE,
-    ], $profile);
-
+    $wrapper_id = Html::getUniqueId('billing-profile-wrapper');
+    $element['#prefix'] = '<div id="' . $wrapper_id . '">';
+    $element['#suffix'] = '</div>';
     $element['#type'] = 'fieldset';
-    $element['profile'] = [
-      '#parents' => array_merge($element['#field_parents'], [$items->getName(), $delta, 'profile']),
-      '#inline_form' => $inline_form,
-    ];
-    $element['profile'] = $inline_form->buildInlineForm($element['profile'], $form_state);
+    // Check whether we should hide the profile form behind a button.
+    // Note that we hide the profile form by default if the order doesn't
+    // reference a billing profile yet.
+    $hide_profile_form = $form_state->get('hide_profile_form') ?? $profile->isNew();
+
+    if ($hide_profile_form) {
+      $element['add_billing_information'] = [
+        '#value' => $this->t('Add billing information'),
+        '#name' => 'add_billing_information',
+        '#type' => 'submit',
+        '#submit' => [[get_class($this), 'addBillingInformationSubmit']],
+        '#limit_validation_errors' => [],
+        '#ajax' => [
+          'callback' => [get_class($this), 'ajaxCallback'],
+          'wrapper' => $wrapper_id,
+        ],
+      ];
+    }
+    else {
+      // The "cancel" button shouldn't we shown in case the order references
+      // a billing profile already.
+      if ($profile->isNew()) {
+        $element['hide_profile_form'] = [
+          '#value' => $this->t('Cancel'),
+          '#name' => 'hide_profile_form',
+          '#type' => 'submit',
+          '#submit' => [[get_class($this), 'hideProfileFormSubmit']],
+          '#limit_validation_errors' => [],
+          '#ajax' => [
+            'callback' => [get_class($this), 'ajaxCallback'],
+            'wrapper' => $wrapper_id,
+          ],
+          '#weight' => 100,
+        ];
+      }
+      $inline_form = $this->inlineFormManager->createInstance('customer_profile', [
+        'profile_scope' => 'billing',
+        'available_countries' => $store->getBillingCountries(),
+        'address_book_uid' => $order->getCustomerId(),
+        'admin' => TRUE,
+      ], $profile);
+      $element['profile'] = [
+        '#parents' => array_merge($element['#field_parents'], [$items->getName(), $delta, 'profile']),
+        '#inline_form' => $inline_form,
+      ];
+      $element['profile'] = $inline_form->buildInlineForm($element['profile'], $form_state);
+    }
 
     // Workaround for massageFormValues() not getting $element.
     $element['array_parents'] = [
@@ -126,6 +165,9 @@ class BillingProfileWidget extends WidgetBase implements ContainerFactoryPluginI
     $new_values = [];
     foreach ($values as $delta => $value) {
       $element = NestedArray::getValue($form, $value['array_parents']);
+      if (!isset($element['profile'])) {
+        continue;
+      }
       /** @var \Drupal\commerce\Plugin\Commerce\InlineForm\EntityInlineFormInterface $inline_form */
       $inline_form = $element['profile']['#inline_form'];
       $new_values[$delta]['entity'] = $inline_form->getEntity();
@@ -140,6 +182,31 @@ class BillingProfileWidget extends WidgetBase implements ContainerFactoryPluginI
     $entity_type = $field_definition->getTargetEntityTypeId();
     $field_name = $field_definition->getName();
     return $entity_type == 'commerce_order' && $field_name == 'billing_profile';
+  }
+
+  /**
+   * Submit callback for the "Add billing information" button.
+   */
+  public static function addBillingInformationSubmit(array $form, FormStateInterface $form_state) {
+    $form_state->set('hide_profile_form', FALSE);
+    $form_state->setRebuild();
+  }
+
+  /**
+   * Submit callback for the "cancel" button that hides the billing profile.
+   */
+  public static function hideProfileFormSubmit(array $form, FormStateInterface $form_state) {
+    $form_state->set('hide_profile_form', TRUE);
+    $form_state->setRebuild();
+  }
+
+  /**
+   * Ajax callback.
+   */
+  public static function ajaxCallback(array $form, FormStateInterface $form_state) {
+    $parents = $form_state->getTriggeringElement()['#array_parents'];
+    $parents = array_slice($parents, 0, -1);
+    return NestedArray::getValue($form, $parents);
   }
 
 }

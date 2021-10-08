@@ -44,7 +44,7 @@ class CanadianSalesTaxTest extends OrderKernelTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->installConfig(['commerce_tax']);
@@ -117,6 +117,19 @@ class CanadianSalesTaxTest extends OrderKernelTestBase {
     $order = $this->buildOrder('US', 'SC');
     $plugin->apply($order);
     $this->assertCount(0, $order->collectAdjustments());
+  }
+
+  /**
+   * @covers ::getZones
+   */
+  public function testGetZones() {
+    /** @var \Drupal\commerce_tax\Plugin\Commerce\TaxType\LocalTaxTypeInterface $plugin */
+    $plugin = $this->taxType->getPlugin();
+    $zones = $plugin->getZones();
+    $this->assertArrayHasKey('ca', $zones);
+    $this->assertArrayHasKey('bc', $zones);
+    $this->assertArrayHasKey('mb', $zones);
+    $this->assertArrayHasKey('nb', $zones);
   }
 
   /**

@@ -12,6 +12,15 @@ targetEntityType: commerce_order
 bundle: default
 mode: default
 content:
+  balance:
+    type: commerce_price_default
+    weight: 9
+    region: content
+    label: inline
+    settings:
+      strip_trailing_zeroes: false
+      currency_display: symbol
+    third_party_settings: {  }
   changed:
     type: timestamp
     weight: 4
@@ -68,7 +77,9 @@ content:
     label: hidden
     type: state_transition_form
     weight: 8
-    settings: {  }
+    settings:
+      require_confirmation: true
+      use_modal: true
     third_party_settings: {  }
     region: content
   total_price:

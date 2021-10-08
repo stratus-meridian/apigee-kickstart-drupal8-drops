@@ -48,14 +48,14 @@ class OrderItemQuantity extends ConditionBase implements ParentEntityAwareInterf
 
     $form['operator'] = [
       '#type' => 'select',
-      '#title' => t('Operator'),
+      '#title' => $this->t('Operator'),
       '#options' => $this->getComparisonOperators(),
       '#default_value' => $this->configuration['operator'],
       '#required' => TRUE,
     ];
     $form['quantity'] = [
       '#type' => 'number',
-      '#title' => t('Quantity'),
+      '#title' => $this->t('Quantity'),
       '#default_value' => $this->configuration['quantity'],
       '#min' => 1,
       '#required' => TRUE,

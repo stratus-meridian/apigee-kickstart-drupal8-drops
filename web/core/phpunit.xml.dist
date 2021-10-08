@@ -19,8 +19,6 @@
     <env name="SIMPLETEST_BASE_URL" value=""/>
     <!-- Example SIMPLETEST_DB value: mysql://username:password@localhost/databasename#table_prefix -->
     <env name="SIMPLETEST_DB" value=""/>
-    <!-- Example SIMPLETEST_IGNORE_DIRECTORIES value: build,dev_module -->
-    <env name="SIMPLETEST_IGNORE_DIRECTORIES" value=""/>
     <!-- Example BROWSERTEST_OUTPUT_DIRECTORY value: /path/to/webroot/sites/simpletest/browser_output -->
     <env name="BROWSERTEST_OUTPUT_DIRECTORY" value=""/>
     <!-- To have browsertest output use an alternative base URL. For example if

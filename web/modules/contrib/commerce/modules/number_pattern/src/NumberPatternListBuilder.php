@@ -71,7 +71,7 @@ class NumberPatternListBuilder extends ConfigEntityListBuilder {
    */
   public function buildHeader() {
     $header['label'] = $this->t('Number pattern');
-    $header['id'] = $this->t('Machine name');
+    $header['id'] = $this->t('ID');
     if ($this->shouldDisplayType()) {
       $header['type'] = $this->t('Type');
     }

@@ -113,8 +113,9 @@ abstract class AppAnalyticsFormBase extends FormBase {
       return $form;
     }
 
-    $analytics_environment = $this->config('apigee_edge.common_app_settings')
-      ->get('analytics_environment');
+    $config = $this->config('apigee_edge.common_app_settings');
+    $analytics_environment = $config->get('analytics_environment');
+    $analytics_available_environments = $config->get('analytics_available_environments');
 
     $form_state->disableRedirect();
     $form['#attached']['library'][] = 'apigee_edge/apigee_edge.analytics';
@@ -137,16 +138,34 @@ abstract class AppAnalyticsFormBase extends FormBase {
       '#markup' => $this->t('Filter:'),
     ];
 
+    $form['controls']['environment'] = [
+      '#type' => 'value',
+      '#value' => $analytics_environment,
+    ];
+
+    if (count($analytics_available_environments) > 1) {
+      $form['controls']['environment'] = [
+        '#type' => 'select',
+        '#required' => TRUE,
+        '#title' => t('Environment'),
+        '#title_display' => 'invisible',
+        '#default_value' => $analytics_environment,
+        '#options' => array_combine($analytics_available_environments, $analytics_available_environments),
+      ];
+    }
+
     $form['controls']['metrics'] = [
       '#type' => 'select',
       '#options' => [
-        'total_response_time' => $this->t('Average response time'),
-        'max_response_time' => $this->t('Max response time'),
-        'min_response_time' => $this->t('Min response time'),
-        'message_count' => $this->t('Message count'),
-        'error_count' => $this->t('Error count'),
+        'avg(total_response_time)' => $this->t('Average response time'),
+        'max(total_response_time)' => $this->t('Max response time'),
+        'min(total_response_time)' => $this->t('Min response time'),
+        'sum(message_count)' => $this->t('Message count'),
+        'sum(is_error)' => $this->t('Error count'),
       ],
-      '#default_value' => 'total_response_time',
+      '#default_value' => 'avg(total_response_time)',
+      '#title' => t('Metrics'),
+      '#title_display' => 'invisible'
     ];
 
     $form['controls']['since'] = [
@@ -178,6 +197,8 @@ abstract class AppAnalyticsFormBase extends FormBase {
         '2w' => $this->t('Last 2 Weeks'),
         'custom' => $this->t('Custom range'),
       ],
+      '#title' => t('Date range'),
+      '#title_display' => 'invisible'
     ];
 
     $form['controls']['submit'] = [
@@ -220,8 +241,9 @@ abstract class AppAnalyticsFormBase extends FormBase {
     $metric = $this->getRequest()->query->get('metric');
     $since = $this->getRequest()->query->get('since');
     $until = $this->getRequest()->query->get('until');
+    $environment = $this->getRequest()->query->get('environment');
 
-    if ($this->validateQueryString($form, $metric, $since, $until)) {
+    if ($this->validateQueryString($form, $metric, $since, $until, $environment)) {
       $form['controls']['metrics']['#default_value'] = $metric;
       $since_datetime = DrupalDatetime::createFromTimestamp($since);
       $since_datetime->setTimezone(new \Datetimezone(date_default_timezone_get()));
@@ -230,6 +252,7 @@ abstract class AppAnalyticsFormBase extends FormBase {
       $form['controls']['since']['#default_value'] = $since_datetime;
       $form['controls']['until']['#default_value'] = $until_datetime;
       $form['controls']['quick_date_picker']['#default_value'] = 'custom';
+      $form['controls']['environment']['#default_value'] = $environment;
     }
     else {
       $default_since_value = new DrupalDateTime();
@@ -240,12 +263,13 @@ abstract class AppAnalyticsFormBase extends FormBase {
       $metric = $form['controls']['metrics']['#default_value'];
       $since = $default_since_value->getTimestamp();
       $until = $default_until_value->getTimestamp();
+      $environment = $analytics_environment;
     }
 
     if (empty($form_state->getUserInput())) {
       // The last parameter allows to expose and make analytics environment
       // configurable later on the form.
-      $this->generateResponse($form, $app, $metric, $since, $until, $analytics_environment);
+      $this->generateResponse($form, $app, $metric, $since, $until, $environment);
     }
 
     return $form;
@@ -279,12 +303,14 @@ abstract class AppAnalyticsFormBase extends FormBase {
    *   The start date parameter.
    * @param string $until
    *   The end date parameter.
+   * @param string $environment
+   *   The environment parameter.
    *
    * @return bool
    *   TRUE if the parameters are correctly set, else FALSE.
    */
-  protected function validateQueryString(array $form, $metric, $since, $until): bool {
-    if ($metric === NULL || $since === NULL || $until === NULL) {
+  protected function validateQueryString(array $form, $metric, $since, $until, $environment): bool {
+    if ($metric === NULL || $since === NULL || $until === NULL || $environment === NULL) {
       return FALSE;
     }
 
@@ -307,6 +333,11 @@ abstract class AppAnalyticsFormBase extends FormBase {
           ->addError($this->t('Start date cannot be in future. The current local time of the Developer Portal: @time', [
             '@time' => new DrupalDateTime(),
           ]));
+        return FALSE;
+      }
+      if (!in_array($environment, $this->config('apigee_edge.common_app_settings')->get('analytics_available_environments'))) {
+        $this->messenger()
+          ->addError($this->t('Invalid parameter environment in the URL.'));
         return FALSE;
       }
     }
@@ -438,6 +469,7 @@ abstract class AppAnalyticsFormBase extends FormBase {
         'metric' => $form_state->getValue('metrics'),
         'since' => $form_state->getValue('since')->getTimeStamp(),
         'until' => $form_state->getValue('until')->getTimeStamp(),
+        'environment' => $form_state->getValue('environment'),
       ],
     ];
     $form_state->setRedirect('<current>', [], $options);

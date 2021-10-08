@@ -486,3 +486,15 @@ function commerce_promotion_post_update_11(array &$sandbox = NULL) {
     $sandbox['#finished'] = ($sandbox['total_count'] - $sandbox['current_count']) / $sandbox['total_count'];
   }
 }
+
+/**
+ * Import Coupons view.
+ */
+function commerce_promotion_post_update_12() {
+  /** @var \Drupal\commerce\Config\ConfigUpdaterInterface $config_updater */
+  $config_updater = \Drupal::service('commerce.config_updater');
+  $result = $config_updater->import([
+    'views.view.commerce_promotion_coupons',
+  ]);
+  return implode('<br>', $result->getFailed());
+}

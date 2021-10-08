@@ -12,7 +12,7 @@ class CartBlockTest extends CartBrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
     $this->placeBlock('commerce_cart');
   }

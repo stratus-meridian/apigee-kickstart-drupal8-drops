@@ -68,12 +68,13 @@ interface EdgeKeyTypeInterface extends KeyTypeMultivalueInterface, KeyTypeAuthen
    */
   const EDGE_AUTH_TYPE_JWT = 'jwt';
 
+  const EDGE_AUTH_TYPE_DEFAULT_GCE_SERVICE_ACCOUNT = 'gce-service-account';
   /**
    * The endpoint type for default.
    *
    * @var string
    *
-   * @deprecated Deprecated in apigee_edge:8.x-1.2 and is removed from
+   * @deprecated in apigee_edge:8.x-1.2 and is removed from
    * apigee_edge:8.x-2.0. Check for endpoint type instead.
    *
    * @see EdgeKeyTypeInterface::getEndpointType().
@@ -85,7 +86,7 @@ interface EdgeKeyTypeInterface extends KeyTypeMultivalueInterface, KeyTypeAuthen
    *
    * @var string
    *
-   * @deprecated Deprecated in apigee_edge:8.x-1.2 and is removed from
+   * @deprecated in apigee_edge:8.x-1.2 and is removed from
    * apigee_edge:8.x-2.0. Check for endpoint type instead.
    *
    * @see EdgeKeyTypeInterface::getEndpointType().
@@ -136,7 +137,7 @@ interface EdgeKeyTypeInterface extends KeyTypeMultivalueInterface, KeyTypeAuthen
    * @return string
    *   The API endpoint type.
    *
-   * @deprecated Deprecated in apigee_edge:8.x-1.2 and is removed from
+   * @deprecated in apigee_edge:8.x-1.2 and is removed from
    * apigee_edge:8.x-2.0. Use getInstanceType() instead.
    *
    * @see https://github.com/apigee/apigee-edge-drupal/issues/268
@@ -219,5 +220,18 @@ interface EdgeKeyTypeInterface extends KeyTypeMultivalueInterface, KeyTypeAuthen
    *   The account key as an array.
    */
   public function getAccountKey(KeyInterface $key): array;
+
+  /**
+   * Return if you should use the Default Service account.
+   *
+   * This applies to portals hosted on Google Compute Engine.
+   *
+   * @param \Drupal\key\KeyInterface $key
+   *   The key entity.
+   *
+   * @return bool
+   *   The account key as an array.
+   */
+  public function useGcpDefaultServiceAccount(KeyInterface $key): bool;
 
 }

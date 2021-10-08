@@ -9,6 +9,7 @@ use Drupal\commerce_payment\Exception\HardDeclineException;
 use Drupal\commerce_payment\PaymentMethodTypeManager;
 use Drupal\commerce_payment\PaymentTypeManager;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\OnsitePaymentGatewayBase;
+use Drupal\commerce_price\MinorUnitsConverterInterface;
 use Drupal\commerce_price\Price;
 use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
@@ -37,8 +38,8 @@ class Onsite extends OnsitePaymentGatewayBase implements OnsiteInterface {
   /**
    * {@inheritdoc}
    */
-  public function __construct(array $configuration, $plugin_id, $plugin_definition, EntityTypeManagerInterface $entity_type_manager, PaymentTypeManager $payment_type_manager, PaymentMethodTypeManager $payment_method_type_manager, TimeInterface $time) {
-    parent::__construct($configuration, $plugin_id, $plugin_definition, $entity_type_manager, $payment_type_manager, $payment_method_type_manager, $time);
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, EntityTypeManagerInterface $entity_type_manager, PaymentTypeManager $payment_type_manager, PaymentMethodTypeManager $payment_method_type_manager, TimeInterface $time, MinorUnitsConverterInterface $minor_units_converter) {
+    parent::__construct($configuration, $plugin_id, $plugin_definition, $entity_type_manager, $payment_type_manager, $payment_method_type_manager, $time, $minor_units_converter);
 
     // You can create an instance of the SDK here and assign it to $this->api.
     // Or inject Guzzle when there's no suitable SDK.
@@ -114,6 +115,11 @@ class Onsite extends OnsitePaymentGatewayBase implements OnsiteInterface {
 
     $payment->setState($next_state);
     $payment->setRemoteId($remote_id);
+    $payment->setAvsResponseCode('A');
+    if (!$payment_method->card_type->isEmpty()) {
+      $avs_response_code_label = $this->buildAvsResponseCodeLabel('A', $payment_method->card_type->value);
+      $payment->setAvsResponseCodeLabel($avs_response_code_label);
+    }
     $payment->save();
   }
 
@@ -249,6 +255,19 @@ class Onsite extends OnsitePaymentGatewayBase implements OnsiteInterface {
     //
     // Perform the update request here, throw an exception if it fails.
     // See \Drupal\commerce_payment\Exception for the available exceptions.
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function buildAvsResponseCodeLabel($avs_response_code, $card_type) {
+    if ($card_type == 'dinersclub' || $card_type == 'jcb') {
+      if ($avs_response_code == 'A') {
+        return $this->t('Approved.');
+      }
+      return NULL;
+    }
+    return parent::buildAvsResponseCodeLabel($avs_response_code, $card_type);
   }
 
 }

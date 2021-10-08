@@ -30,6 +30,17 @@ final class CartEvents {
   const CART_ENTITY_ADD = 'commerce_cart.entity.add';
 
   /**
+   * Name of the event fired after adding an order item to the cart.
+   *
+   * Fired before the cart order is saved.
+   *
+   * @Event
+   *
+   * @see \Drupal\commerce_cart\Event\CartOrderItemAddEvent
+   */
+  const CART_ORDER_ITEM_ADD = 'commerce_cart.order_item.add';
+
+  /**
    * Name of the event fired after updating a cart's order item.
    *
    * Fired before the cart order is saved.

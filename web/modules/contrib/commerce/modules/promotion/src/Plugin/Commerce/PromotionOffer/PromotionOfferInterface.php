@@ -39,4 +39,14 @@ interface PromotionOfferInterface extends ConfigurableInterface, PluginFormInter
    */
   public function apply(EntityInterface $entity, PromotionInterface $promotion);
 
+  /**
+   * Allows an offer to clean up any modifications done to the given entity.
+   *
+   * @param \Drupal\Core\Entity\EntityInterface $entity
+   *   The entity.
+   * @param \Drupal\commerce_promotion\Entity\PromotionInterface $promotion
+   *   THe parent promotion.
+   */
+  public function clear(EntityInterface $entity, PromotionInterface $promotion);
+
 }

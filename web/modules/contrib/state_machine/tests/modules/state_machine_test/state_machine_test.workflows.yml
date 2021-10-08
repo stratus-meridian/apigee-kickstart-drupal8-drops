@@ -57,3 +57,22 @@ validation:
       label: Cancel
       from: [new, validation, fulfillment]
       to:   canceled
+
+two_transitions:
+  id: two_transitions
+  label: Two transitions
+  group: entity_test_with_bundle
+  states:
+    new:
+      label: New
+    completed:
+      label: Completed
+  transitions:
+    complete1:
+      label: Complete1
+      from: [new]
+      to:   completed
+    complete2:
+      label: Complete2
+      from: [new]
+      to:   completed

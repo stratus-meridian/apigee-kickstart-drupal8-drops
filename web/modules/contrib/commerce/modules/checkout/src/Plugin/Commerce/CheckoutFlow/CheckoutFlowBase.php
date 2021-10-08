@@ -4,6 +4,8 @@ namespace Drupal\commerce_checkout\Plugin\Commerce\CheckoutFlow;
 
 use Drupal\commerce\AjaxFormTrait;
 use Drupal\commerce\Response\NeedsRedirectException;
+use Drupal\commerce_checkout\Event\CheckoutEvents;
+use Drupal\commerce_order\Event\OrderEvent;
 use Drupal\Component\Utility\Html;
 use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Cache\CacheableMetadata;
@@ -58,6 +60,13 @@ abstract class CheckoutFlowBase extends PluginBase implements CheckoutFlowInterf
   protected $parentEntity;
 
   /**
+   * Static cache of visible steps.
+   *
+   * @var array
+   */
+  protected $visibleSteps = [];
+
+  /**
    * Constructs a new CheckoutFlowBase object.
    *
    * @param array $configuration
@@ -108,6 +117,10 @@ abstract class CheckoutFlowBase extends PluginBase implements CheckoutFlowInterf
       $this->_parentEntityId = $this->parentEntity->id();
       unset($this->parentEntity);
     }
+    if (!empty($this->order)) {
+      $this->_orderId = $this->order->id();
+      unset($this->order);
+    }
 
     return parent::__sleep();
   }
@@ -123,6 +136,12 @@ abstract class CheckoutFlowBase extends PluginBase implements CheckoutFlowInterf
       $this->parentEntity = $checkout_flow_storage->load($this->_parentEntityId);
       unset($this->_parentEntityId);
     }
+
+    if (!empty($this->_orderId)) {
+      $order_storage = $this->entityTypeManager->getStorage('commerce_order');
+      $this->order = $order_storage->load($this->_orderId);
+      unset($this->_orderId);
+    }
   }
 
   /**
@@ -136,26 +155,41 @@ abstract class CheckoutFlowBase extends PluginBase implements CheckoutFlowInterf
    * {@inheritdoc}
    */
   public function getPreviousStepId($step_id) {
-    $step_ids = array_keys($this->getVisibleSteps());
-    $current_index = array_search($step_id, $step_ids);
-    return isset($step_ids[$current_index - 1]) ? $step_ids[$current_index - 1] : NULL;
+    $step_ids = array_keys($this->getSteps());
+    $previous_step_index = array_search($step_id, $step_ids) - 1;
+    while (isset($step_ids[$previous_step_index])) {
+      if (!$this->isStepVisible($step_ids[$previous_step_index])) {
+        $previous_step_index--;
+        continue;
+      }
+      return $step_ids[$previous_step_index];
+    }
+
+    return NULL;
   }
 
   /**
    * {@inheritdoc}
    */
   public function getNextStepId($step_id) {
-    $step_ids = array_keys($this->getVisibleSteps());
-    $current_index = array_search($step_id, $step_ids);
-    return isset($step_ids[$current_index + 1]) ? $step_ids[$current_index + 1] : NULL;
+    $step_ids = array_keys($this->getSteps());
+    $next_step_index = array_search($step_id, $step_ids) + 1;
+    while (isset($step_ids[$next_step_index])) {
+      if (!$this->isStepVisible($step_ids[$next_step_index])) {
+        $next_step_index++;
+        continue;
+      }
+      return $step_ids[$next_step_index];
+    }
+
+    return NULL;
   }
 
   /**
    * {@inheritdoc}
    */
   public function redirectToStep($step_id) {
-    $available_step_ids = array_keys($this->getVisibleSteps());
-    if (!in_array($step_id, $available_step_ids)) {
+    if (!$this->isStepVisible($step_id)) {
       throw new \InvalidArgumentException(sprintf('Invalid step ID "%s" passed to redirectToStep().', $step_id));
     }
 
@@ -194,8 +228,32 @@ abstract class CheckoutFlowBase extends PluginBase implements CheckoutFlowInterf
    * {@inheritdoc}
    */
   public function getVisibleSteps() {
-    // All steps are visible by default.
-    return $this->getSteps();
+    if (empty($this->visibleSteps)) {
+      $steps = $this->getSteps();
+      foreach ($steps as $step_id => $step) {
+        if (!$this->isStepVisible($step_id)) {
+          unset($steps[$step_id]);
+        }
+      }
+      $this->visibleSteps = $steps;
+    }
+
+    return $this->visibleSteps;
+  }
+
+  /**
+   * Gets whether the given step is visible.
+   *
+   * @param string $step_id
+   *   The step ID.
+   *
+   * @return bool
+   *   TRUE if the step is visible, FALSE otherwise.
+   */
+  protected function isStepVisible($step_id) {
+    // All available steps are visible by default.
+    $step_ids = array_keys($this->getSteps());
+    return in_array($step_id, $step_ids);
   }
 
   /**
@@ -225,6 +283,7 @@ abstract class CheckoutFlowBase extends PluginBase implements CheckoutFlowInterf
   public function defaultConfiguration() {
     return [
       'display_checkout_progress' => TRUE,
+      'display_checkout_progress_breadcrumb_links' => FALSE,
     ];
   }
 
@@ -237,6 +296,12 @@ abstract class CheckoutFlowBase extends PluginBase implements CheckoutFlowInterf
       '#title' => $this->t('Display checkout progress'),
       '#description' => $this->t('Used by the checkout progress block to determine visibility.'),
       '#default_value' => $this->configuration['display_checkout_progress'],
+    ];
+    $form['display_checkout_progress_breadcrumb_links'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Display checkout progress breadcrumb as links'),
+      '#description' => $this->t('Let the checkout progress block render the breadcrumb as links.'),
+      '#default_value' => $this->configuration['display_checkout_progress_breadcrumb_links'],
     ];
 
     return $form;
@@ -255,6 +320,7 @@ abstract class CheckoutFlowBase extends PluginBase implements CheckoutFlowInterf
       $values = $form_state->getValue($form['#parents']);
       $this->configuration = [];
       $this->configuration['display_checkout_progress'] = $values['display_checkout_progress'];
+      $this->configuration['display_checkout_progress_breadcrumb_links'] = $values['display_checkout_progress_breadcrumb_links'];
     }
   }
 
@@ -287,7 +353,7 @@ abstract class CheckoutFlowBase extends PluginBase implements CheckoutFlowInterf
       $this->order = $order_storage->load($this->order->id());
     }
 
-    $steps = $this->getVisibleSteps();
+    $steps = $this->getSteps();
     $form['#tree'] = TRUE;
     $form['#step_id'] = $step_id;
     $form['#title'] = $steps[$step_id]['label'];
@@ -358,6 +424,9 @@ abstract class CheckoutFlowBase extends PluginBase implements CheckoutFlowInterf
     }
     // Place the order.
     if ($step_id == 'complete' && $this->order->getState()->getId() == 'draft') {
+      // Notify other modules.
+      $event = new OrderEvent($this->order);
+      $this->eventDispatcher->dispatch(CheckoutEvents::COMPLETION, $event);
       $this->order->getState()->applyTransitionById('place');
     }
   }
@@ -372,7 +441,7 @@ abstract class CheckoutFlowBase extends PluginBase implements CheckoutFlowInterf
    *   TRUE if the given step has a sidebar, FALSE otherwise.
    */
   protected function hasSidebar($step_id) {
-    $steps = $this->getVisibleSteps();
+    $steps = $this->getSteps();
     return !empty($steps[$step_id]['has_sidebar']);
   }
 
@@ -388,7 +457,7 @@ abstract class CheckoutFlowBase extends PluginBase implements CheckoutFlowInterf
    *   The actions element.
    */
   protected function actions(array $form, FormStateInterface $form_state) {
-    $steps = $this->getVisibleSteps();
+    $steps = $this->getSteps();
     $next_step_id = $this->getNextStepId($form['#step_id']);
     $previous_step_id = $this->getPreviousStepId($form['#step_id']);
     $has_next_step = $next_step_id && isset($steps[$next_step_id]['next_label']);

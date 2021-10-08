@@ -22,6 +22,25 @@ function apigee_kickstart_preprocess_node(&$variables) {
   // print within the corresponding page template.
   $sidebar_types = ['article', 'forum', 'page'];
   if (in_array($node->bundle(), $sidebar_types)) {
-    apigee_kickstart_add_regions_to_node(['sidebar_first', 'sidebar_second'], $variables);
+    apigee_kickstart_add_regions_to_node([
+      'sidebar_first',
+      'sidebar_second',
+    ], $variables);
+  }
+
+  if ($node->bundle() == 'apidoc') {
+
+    // Add the entity to the template.
+    $variables['elements']["#apidoc"] = $node;
+    $variables['entity'] = $node;
+
+    $variables['attributes']['class'][] = 'apidoc';
+    $variables['attributes']['class'][] = 'apidoc--view-mode-' . $variables['view_mode'];
+
+    // Add a link to the entity.
+    if ($variables['view_mode'] !== 'full') {
+      $variables['content']['field_apidoc_file_link'] = $node->toLink(t('View Documentation'))
+        ->toRenderable();
+    }
   }
 }

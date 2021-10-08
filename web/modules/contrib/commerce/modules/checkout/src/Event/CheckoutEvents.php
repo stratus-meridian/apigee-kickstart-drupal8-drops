@@ -8,6 +8,15 @@ namespace Drupal\commerce_checkout\Event;
 final class CheckoutEvents {
 
   /**
+   * Name of the event fired when the customer completes checkout.
+   *
+   * @Event
+   *
+   * @see \Drupal\commerce_order\Event\OrderEvent
+   */
+  const COMPLETION = 'commerce_checkout.completion';
+
+  /**
    * Name of the event fired when the customer registers at the end of checkout.
    *
    * @Event

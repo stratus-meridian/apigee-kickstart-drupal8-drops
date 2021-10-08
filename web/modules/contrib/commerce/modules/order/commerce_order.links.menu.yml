@@ -4,6 +4,12 @@ commerce_order.configuration:
   parent: 'commerce.configuration'
   weight: -5
 
+commerce_order.settings:
+  title: 'Order settings'
+  route_name: 'commerce_order.settings'
+  parent: 'commerce_order.configuration'
+  description: 'Configure order settings.'
+
 entity.commerce_order.collection:
   title: 'Orders'
   route_name: 'entity.commerce_order.collection'

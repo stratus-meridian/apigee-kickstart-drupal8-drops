@@ -2,12 +2,11 @@ name: Commerce Order Test
 type: module
 description: Contains various non-specific things needed in order tests.
 package: Testing
-core_version_requirement: ^8.7.7 || ^9
 dependencies:
   - commerce:commerce_order
   - commerce:commerce_product
 
-# Information added by Drupal.org packaging script on 2020-05-27
-version: '8.x-2.18'
+# Information added by Drupal.org packaging script on 2021-09-21
+version: '8.x-2.27'
 project: 'commerce'
-datestamp: 1590593003
+datestamp: 1632248845

@@ -22,13 +22,13 @@ class ManualPaymentAddForm extends PaymentGatewayFormBase {
 
     $form['amount'] = [
       '#type' => 'commerce_price',
-      '#title' => t('Amount'),
+      '#title' => $this->t('Amount'),
       '#default_value' => $amount->toArray(),
       '#required' => TRUE,
     ];
     $form['received'] = [
       '#type' => 'checkbox',
-      '#title' => t('The specified amount was already received.'),
+      '#title' => $this->t('The specified amount was already received.'),
     ];
 
     return $form;

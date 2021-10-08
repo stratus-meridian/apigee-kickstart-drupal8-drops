@@ -62,7 +62,7 @@ class ContentEntity extends EntityInlineFormBase {
     parent::validateInlineForm($inline_form, $form_state);
 
     assert($this->entity instanceof ContentEntityInterface);
-    $form_display = EntityFormDisplay::collectRenderDisplay($this->entity, 'default');
+    $form_display = EntityFormDisplay::collectRenderDisplay($this->entity, $this->configuration['form_mode']);
     $form_display->extractFormValues($this->entity, $inline_form, $form_state);
     $form_display->validateFormValues($this->entity, $inline_form, $form_state);
   }
@@ -74,7 +74,7 @@ class ContentEntity extends EntityInlineFormBase {
     parent::submitInlineForm($inline_form, $form_state);
 
     assert($this->entity instanceof ContentEntityInterface);
-    $form_display = EntityFormDisplay::collectRenderDisplay($this->entity, 'default');
+    $form_display = EntityFormDisplay::collectRenderDisplay($this->entity, $this->configuration['form_mode']);
     $form_display->extractFormValues($this->entity, $inline_form, $form_state);
     if ($this->entity->isTranslatable()) {
       $this->updateLangcode($this->entity, $inline_form, $form_state);

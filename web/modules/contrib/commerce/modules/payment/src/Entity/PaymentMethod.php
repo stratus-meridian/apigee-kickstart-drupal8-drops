@@ -2,13 +2,13 @@
 
 namespace Drupal\commerce_payment\Entity;
 
+use Drupal\commerce\EntityOwnerTrait;
 use Drupal\Core\Entity\ContentEntityBase;
 use Drupal\Core\Entity\EntityChangedTrait;
 use Drupal\Core\Entity\EntityMalformedException;
 use Drupal\Core\Entity\EntityStorageInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Field\BaseFieldDefinition;
-use Drupal\user\UserInterface;
 use Drupal\profile\Entity\ProfileInterface;
 
 /**
@@ -28,9 +28,11 @@ use Drupal\profile\Entity\ProfileInterface;
  *   bundle_plugin_type = "commerce_payment_method_type",
  *   handlers = {
  *     "access" = "Drupal\commerce_payment\PaymentMethodAccessControlHandler",
+ *     "permission_provider" = "Drupal\commerce_payment\PaymentMethodPermissionProvider",
  *     "list_builder" = "Drupal\commerce_payment\PaymentMethodListBuilder",
  *     "storage" = "Drupal\commerce_payment\PaymentMethodStorage",
  *     "views_data" = "Drupal\commerce\CommerceEntityViewsData",
+ *     "storage_schema" = "Drupal\commerce\CommerceContentEntityStorageSchema",
  *     "form" = {
  *       "edit" = "Drupal\commerce_payment\Form\PaymentMethodEditForm",
  *       "delete" = "Drupal\commerce_payment\Form\PaymentMethodDeleteForm"
@@ -41,6 +43,9 @@ use Drupal\profile\Entity\ProfileInterface;
  *   },
  *   base_table = "commerce_payment_method",
  *   admin_permission = "administer commerce_payment_method",
+ *   field_indexes = {
+ *     "remote_id"
+ *   },
  *   entity_keys = {
  *     "id" = "method_id",
  *     "uuid" = "uuid",
@@ -58,6 +63,7 @@ use Drupal\profile\Entity\ProfileInterface;
 class PaymentMethod extends ContentEntityBase implements PaymentMethodInterface {
 
   use EntityChangedTrait;
+  use EntityOwnerTrait;
 
   /**
    * {@inheritdoc}
@@ -102,36 +108,6 @@ class PaymentMethod extends ContentEntityBase implements PaymentMethodInterface 
    */
   public function getPaymentGatewayMode() {
     return $this->get('payment_gateway_mode')->value;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function getOwner() {
-    return $this->get('uid')->entity;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function getOwnerId() {
-    return $this->getEntityKey('owner');
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function setOwnerId($uid) {
-    $this->set('uid', $uid);
-    return $this;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function setOwner(UserInterface $account) {
-    $this->set('uid', $account->id());
-    return $this;
   }
 
   /**
@@ -259,6 +235,7 @@ class PaymentMethod extends ContentEntityBase implements PaymentMethodInterface 
    */
   public static function baseFieldDefinitions(EntityTypeInterface $entity_type) {
     $fields = parent::baseFieldDefinitions($entity_type);
+    $fields += static::ownerBaseFieldDefinitions($entity_type);
 
     $fields['payment_gateway'] = BaseFieldDefinition::create('entity_reference')
       ->setLabel(t('Payment gateway'))
@@ -271,12 +248,9 @@ class PaymentMethod extends ContentEntityBase implements PaymentMethodInterface 
       ->setDescription(t('The payment gateway mode.'))
       ->setRequired(TRUE);
 
-    $fields['uid'] = BaseFieldDefinition::create('entity_reference')
+    $fields['uid']
       ->setLabel(t('Owner'))
       ->setDescription(t('The payment method owner.'))
-      ->setSetting('target_type', 'user')
-      ->setSetting('handler', 'default')
-      ->setDefaultValueCallback('Drupal\commerce_payment\Entity\PaymentMethod::getCurrentUserId')
       ->setDisplayOptions('view', [
         'label' => 'above',
         'type' => 'author',
@@ -295,7 +269,7 @@ class PaymentMethod extends ContentEntityBase implements PaymentMethodInterface 
       ->setDescription(t('Billing profile'))
       ->setSetting('target_type', 'profile')
       ->setSetting('handler', 'default')
-      ->setSetting('handler_settings', ['target_bundles' => ['customer']])
+      ->setSetting('handler_settings', ['target_bundles' => ['customer' => 'customer']])
       ->setDisplayOptions('form', [
         'type' => 'options_select',
         'weight' => 0,
@@ -303,7 +277,7 @@ class PaymentMethod extends ContentEntityBase implements PaymentMethodInterface 
       ])
       ->setDisplayOptions('view', [
         'label' => 'hidden',
-        'type' => 'entity_reference_entity_view',
+        'type' => 'commerce_payment_method_profile',
         'weight' => 2,
       ])
       ->setDisplayConfigurable('view', TRUE);
@@ -344,18 +318,6 @@ class PaymentMethod extends ContentEntityBase implements PaymentMethodInterface 
       ->setDescription(t('The time when the payment method was last edited.'));
 
     return $fields;
-  }
-
-  /**
-   * Default value callback for 'uid' base field definition.
-   *
-   * @see ::baseFieldDefinitions()
-   *
-   * @return array
-   *   An array of default values.
-   */
-  public static function getCurrentUserId() {
-    return [\Drupal::currentUser()->id()];
   }
 
 }

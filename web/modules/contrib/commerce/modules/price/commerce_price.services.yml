@@ -19,6 +19,10 @@ services:
     class: Drupal\commerce_price\CurrencyImporter
     arguments: ['@entity_type.manager', '@language_manager']
 
+  commerce_price.minor_units_converter:
+    class: Drupal\commerce_price\MinorUnitsConverter
+    arguments: ['@commerce_price.currency_repository']
+
   commerce_price.number_formatter_factory:
     class: Drupal\commerce_price\NumberFormatterFactory
     arguments: ['@commerce_price.currency_formatter']

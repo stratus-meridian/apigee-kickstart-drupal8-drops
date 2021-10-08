@@ -42,13 +42,13 @@ class CouponCodeGeneratorTest extends OrderKernelTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->installEntitySchema('commerce_promotion');
     $this->installEntitySchema('commerce_promotion_coupon');
+    $this->installSchema('commerce_promotion', ['commerce_promotion_usage']);
     $this->installConfig(['commerce_order']);
-
     $promotion = Promotion::create([
       'name' => 'Promotion 1',
       'order_types' => ['default'],
@@ -69,6 +69,7 @@ class CouponCodeGeneratorTest extends OrderKernelTestBase {
         'promotion_id' => $promotion->id(),
         'code' => 'COUPON' . $i,
         'usage_limit' => 1,
+        'usage_limit_customer' => 1,
         'status' => 1,
       ]);
       $coupon->save();

@@ -41,7 +41,7 @@ class MultipleCartFormsTest extends CartWebDriverTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
     $this->maximumMetaRefreshCount = 0;
 
@@ -187,6 +187,49 @@ class MultipleCartFormsTest extends CartWebDriverTestBase {
     $variation = $order_items[1]->getPurchasedEntity();
     $this->assertEquals($this->sizeAttributes['large']->id(), $variation->getAttributeValueId('attribute_size'));
     $this->assertEquals($this->colorAttributes['red']->id(), $variation->getAttributeValueId('attribute_color'));
+  }
+
+  /**
+   * Tests that a page with multiple add to cart forms works properly.
+   */
+  public function testMultipleRenderedProductsWithTitleWidget() {
+    $order_item_form_display = EntityFormDisplay::load('commerce_order_item.default.add_to_cart');
+    $order_item_form_display->setComponent('purchased_entity', [
+      'type' => 'commerce_product_variation_title',
+    ]);
+    $order_item_form_display->save();
+    // View of rendered products, each containing an add to cart form.
+    $this->drupalGet('/test-multiple-cart-forms');
+    /** @var \Behat\Mink\Element\NodeElement[] $forms */
+    $forms = $this->getSession()->getPage()->findAll('css', '.commerce-order-item-add-to-cart-form');
+    // Modify a single product's add to cart form.
+    $current_form = $forms[2];
+    $current_form->fillField('quantity[0][value]', '3');
+    $current_form->selectFieldOption('purchased_entity[0][variation]', $this->products[2]->getVariations()[1]->id());
+    $this->assertSession()->assertWaitOnAjaxRequest();
+    $current_form->pressButton('Add to cart');
+    $this->cart = Order::load($this->cart->id());
+    $order_items = $this->cart->getItems();
+    $this->assertEquals(3, $order_items[0]->getQuantity());
+    /** @var \Drupal\commerce_product\Entity\ProductVariationInterface $variation */
+    $variation = $order_items[0]->getPurchasedEntity();
+    $this->assertEquals($this->products[2]->getVariations()[1]->id(), $variation->id());
+
+    // Modify one form, but submit another.
+    $current_form = $forms[0];
+    $current_form->fillField('quantity[0][value]', '2');
+    $current_form->selectFieldOption('purchased_entity[0][variation]', $this->products[0]->getVariations()[2]->id());
+    $this->assertSession()->assertWaitOnAjaxRequest();
+    $forms[1]->selectFieldOption('purchased_entity[0][variation]', $this->products[1]->getVariations()[3]->id());
+    $this->assertSession()->assertWaitOnAjaxRequest();
+    $forms[1]->pressButton('Add to cart');
+    $this->container->get('entity_type.manager')->getStorage('commerce_order')->resetCache([$this->cart->id()]);
+    $this->cart = Order::load($this->cart->id());
+    $order_items = $this->cart->getItems();
+    $this->assertEquals(1, $order_items[1]->getQuantity());
+    /** @var \Drupal\commerce_product\Entity\ProductVariationInterface $variation */
+    $variation = $order_items[1]->getPurchasedEntity();
+    $this->assertEquals($this->products[1]->getVariations()[3]->id(), $variation->id());
   }
 
   /**

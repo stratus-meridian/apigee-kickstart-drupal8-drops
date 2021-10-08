@@ -25,7 +25,7 @@ class ConfigurableFieldManagerTest extends CommerceKernelTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->configurableFieldManager = $this->container->get('commerce.configurable_field_manager');

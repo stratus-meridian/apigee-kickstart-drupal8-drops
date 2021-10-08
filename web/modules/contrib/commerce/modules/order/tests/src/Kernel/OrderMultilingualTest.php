@@ -28,7 +28,7 @@ class OrderMultilingualTest extends OrderKernelTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     ConfigurableLanguage::createFromLangcode('fr')->save();

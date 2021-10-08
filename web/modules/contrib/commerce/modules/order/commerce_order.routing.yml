@@ -6,6 +6,14 @@ commerce_order.configuration:
   requirements:
     _permission: 'access commerce administration pages'
 
+commerce_order.settings:
+  path: '/admin/commerce/config/orders/settings'
+  defaults:
+    _form: '\Drupal\commerce_order\Form\OrderSettingsForm'
+    _title: 'Order settings'
+  requirements:
+    _permission: 'administer commerce_order'
+
 entity.commerce_order.add_page:
   path: '/admin/commerce/orders/add'
   defaults:

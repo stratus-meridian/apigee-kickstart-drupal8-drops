@@ -5,6 +5,8 @@
  * Install, update and uninstall functions for the commerce_payment module.
  */
 
+use Drupal\commerce\CommerceContentEntityStorageSchema;
+use Drupal\commerce_payment\Entity\PaymentMethod;
 use Drupal\commerce_payment\Event\PaymentEvent;
 use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\Core\Session\AccountInterface;
@@ -96,4 +98,80 @@ function commerce_payment_update_8204() {
   $entity_type = $entity_definition_update->getEntityType('commerce_payment');
   $entity_type->setHandlerClass('event', PaymentEvent::class);
   $entity_definition_update->updateEntityType($entity_type);
+}
+
+/**
+ * Update the 'uid' field.
+ */
+function commerce_payment_update_8205() {
+  $definition_update_manager = \Drupal::entityDefinitionUpdateManager();
+  $base_field_override_storage = \Drupal::entityTypeManager()->getStorage('base_field_override');
+  $storage_definition = $definition_update_manager->getFieldStorageDefinition('uid', 'commerce_payment_method');
+  $default_value_callback = PaymentMethod::class . '::getDefaultEntityOwner';
+
+  $base_field_overrides = $base_field_override_storage->loadByProperties([
+    'entity_type' => 'commerce_payment_method',
+    'field_name' => 'uid',
+  ]);
+  /** @var \Drupal\Core\Field\FieldDefinitionInterface $base_field_override */
+  foreach ($base_field_overrides as $base_field_override) {
+    if ($base_field_override->getDefaultValueCallback() !== $storage_definition->getDefaultValueCallback()) {
+      continue;
+    }
+    // Update the "default_value_callback" for base field overrides, as long
+    // as they're using the default one.
+    $base_field_override->setDefaultValueCallback($default_value_callback);
+    $base_field_override->save();
+  }
+
+  $storage_definition->setDefaultValueCallback($default_value_callback);
+  $definition_update_manager->updateFieldStorageDefinition($storage_definition);
+}
+
+/**
+ * Add the avs_response_code and avs_response_code_label fields to payments.
+ */
+function commerce_payment_update_8206() {
+  $entity_definition_update = \Drupal::entityDefinitionUpdateManager();
+
+  $storage_definition = BaseFieldDefinition::create('string')
+    ->setLabel(t('AVS response code'))
+    ->setDescription(t('The AVS response code.'))
+    ->setDisplayConfigurable('view', TRUE);
+  $entity_definition_update->installFieldStorageDefinition('avs_response_code', 'commerce_payment', 'commerce_payment', $storage_definition);
+
+  $storage_definition = BaseFieldDefinition::create('string')
+    ->setLabel(t('AVS response code label'))
+    ->setDescription(t('The AVS response code label.'))
+    ->setDisplayConfigurable('view', TRUE);
+  $entity_definition_update->installFieldStorageDefinition('avs_response_code_label', 'commerce_payment', 'commerce_payment', $storage_definition);
+}
+
+/**
+ * Ensure new field indexes on the payment and payment method entities.
+ */
+function commerce_payment_update_8207() {
+  $entity_type_manager = \Drupal::entityTypeManager();
+  $definition_update_manager = \Drupal::entityDefinitionUpdateManager();
+
+  // Get the current payment entity type definition, ensure the storage schema
+  // class is set.
+  $entity_type = $entity_type_manager->getDefinition('commerce_payment')
+    ->setHandlerClass('storage_schema', CommerceContentEntityStorageSchema::class);
+
+  // Regenerate entity type indexes.
+  $definition_update_manager->updateEntityType($entity_type);
+
+  $entity_type = $entity_type_manager->getDefinition('commerce_payment_method')
+    ->setHandlerClass('storage_schema', CommerceContentEntityStorageSchema::class);
+  $definition_update_manager->updateEntityType($entity_type);
+}
+
+/**
+ * Update the remote_id field definition.
+ */
+function commerce_payment_update_8208() {
+  $definition_update_manager = \Drupal::service('entity.definition_update_manager');
+  $definition_update_manager->updateFieldStorageDefinition($definition_update_manager->getFieldStorageDefinition('remote_id', 'commerce_payment'));
+  $definition_update_manager->updateFieldStorageDefinition($definition_update_manager->getFieldStorageDefinition('remote_id', 'commerce_payment_method'));
 }

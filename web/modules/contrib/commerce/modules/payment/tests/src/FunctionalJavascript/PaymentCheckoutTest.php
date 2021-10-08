@@ -7,6 +7,7 @@ use Drupal\commerce_order\Adjustment;
 use Drupal\commerce_order\Entity\Order;
 use Drupal\commerce_payment\Entity\Payment;
 use Drupal\commerce_payment\Entity\PaymentGateway;
+use Drupal\commerce_payment\Entity\PaymentMethod;
 use Drupal\commerce_price\Price;
 use Drupal\Tests\commerce\FunctionalJavascript\CommerceWebDriverTestBase;
 
@@ -61,6 +62,13 @@ class PaymentCheckoutTest extends CommerceWebDriverTestBase {
   protected $defaultProfile;
 
   /**
+   * A test user.
+   *
+   * @var \Drupal\user\UserInterface
+   */
+  protected $user;
+
+  /**
    * Modules to enable.
    *
    * @var array
@@ -85,7 +93,7 @@ class PaymentCheckoutTest extends CommerceWebDriverTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->store->set('billing_countries', ['FR', 'US']);
@@ -158,6 +166,18 @@ class PaymentCheckoutTest extends CommerceWebDriverTestBase {
 
     /** @var \Drupal\commerce_payment\Entity\PaymentGatewayInterface $payment_gateway */
     $payment_gateway = PaymentGateway::create([
+      'id' => 'stored_offsite',
+      'label' => 'Stored off-site',
+      'plugin' => 'example_stored_offsite_redirect',
+      'configuration' => [
+        'redirect_method' => 'post',
+        'payment_method_types' => ['credit_card'],
+      ],
+    ]);
+    $payment_gateway->save();
+
+    /** @var \Drupal\commerce_payment\Entity\PaymentGatewayInterface $payment_gateway */
+    $payment_gateway = PaymentGateway::create([
       'id' => 'manual',
       'label' => 'Manual',
       'plugin' => 'manual',
@@ -209,6 +229,8 @@ class PaymentCheckoutTest extends CommerceWebDriverTestBase {
       'card_number' => '9999',
       'reusable' => FALSE,
     ]);
+
+    $this->user = $this->createUser(['view commerce_product', 'access checkout']);
   }
 
   /**
@@ -259,6 +281,9 @@ class PaymentCheckoutTest extends CommerceWebDriverTestBase {
     $manual_gateway = PaymentGateway::load('manual');
     $manual_gateway->setStatus(FALSE);
     $manual_gateway->save();
+    $stored_offsite_gateway = PaymentGateway::load('stored_offsite');
+    $stored_offsite_gateway->setStatus(FALSE);
+    $stored_offsite_gateway->save();
 
     // A single radio button should be selected and hidden.
     $this->drupalGet('checkout/1');
@@ -271,6 +296,11 @@ class PaymentCheckoutTest extends CommerceWebDriverTestBase {
    * Tests checkout with a new payment method.
    */
   public function testCheckoutWithNewPaymentMethod() {
+    // Note that we test with a different user with less rights to ensure
+    // the billing profile can be viewed on the review step.
+    $this->drupalLogin($this->user);
+    $this->defaultProfile->setOwner($this->user);
+    $this->defaultProfile->save();
     // Test the 'capture' setting of PaymentProcess while here.
     /** @var \Drupal\commerce_checkout\Entity\CheckoutFlow $checkout_flow */
     $checkout_flow = CheckoutFlow::load('default');
@@ -293,7 +323,7 @@ class PaymentCheckoutTest extends CommerceWebDriverTestBase {
     $this->submitForm([
       'payment_information[add_payment_method][payment_details][number]' => '4012888888881881',
       'payment_information[add_payment_method][payment_details][expiration][month]' => '02',
-      'payment_information[add_payment_method][payment_details][expiration][year]' => '2020',
+      'payment_information[add_payment_method][payment_details][expiration][year]' => '2024',
       'payment_information[add_payment_method][payment_details][security_code]' => '123',
       'payment_information[add_payment_method][billing_information][address][0][address][given_name]' => 'Johnny',
       'payment_information[add_payment_method][billing_information][address][0][address][family_name]' => 'Appleseed',
@@ -304,7 +334,7 @@ class PaymentCheckoutTest extends CommerceWebDriverTestBase {
     ], 'Continue to review');
     $this->assertSession()->pageTextContains('Payment information');
     $this->assertSession()->pageTextContains('Visa ending in 1881');
-    $this->assertSession()->pageTextContains('Expires 2/2020');
+    $this->assertSession()->pageTextContains('Expires 2/2024');
     $this->assertSession()->pageTextContains('Johnny Appleseed');
     $this->assertSession()->pageTextContains('123 New York Drive');
     $this->submitForm([], 'Pay and complete purchase');
@@ -345,6 +375,8 @@ class PaymentCheckoutTest extends CommerceWebDriverTestBase {
     $this->assertNotNull($payment);
     $this->assertEquals($payment->getAmount(), $order->getTotalPrice());
     $this->assertEquals('authorization', $payment->getState()->getId());
+    $this->assertEquals('A', $payment->getAvsResponseCode());
+    $this->assertEquals('Address', $payment->getAvsResponseCodeLabel());
   }
 
   /**
@@ -394,6 +426,8 @@ class PaymentCheckoutTest extends CommerceWebDriverTestBase {
     $this->assertEquals(new Price('19.99', 'USD'), $payment->getAmount());
     $this->assertEquals(new Price('39.99', 'USD'), $order->getTotalPaid());
     $this->assertEquals(new Price('0', 'USD'), $order->getBalance());
+    $this->assertEquals('A', $payment->getAvsResponseCode());
+    $this->assertEquals('Address', $payment->getAvsResponseCodeLabel());
 
     /** @var \Drupal\profile\Entity\ProfileInterface $order_billing_profile */
     $order_billing_profile = $order->getBillingProfile();
@@ -423,7 +457,7 @@ class PaymentCheckoutTest extends CommerceWebDriverTestBase {
     $this->submitForm([
       'payment_information[add_payment_method][payment_details][number]' => '4111111111111111',
       'payment_information[add_payment_method][payment_details][expiration][month]' => '02',
-      'payment_information[add_payment_method][payment_details][expiration][year]' => '2020',
+      'payment_information[add_payment_method][payment_details][expiration][year]' => '2024',
       'payment_information[add_payment_method][payment_details][security_code]' => '123',
       'payment_information[add_payment_method][billing_information][address][0][address][given_name]' => 'Johnny',
       'payment_information[add_payment_method][billing_information][address][0][address][family_name]' => 'Appleseed',
@@ -434,7 +468,7 @@ class PaymentCheckoutTest extends CommerceWebDriverTestBase {
     ], 'Continue to review');
     $this->assertSession()->pageTextContains('Payment information');
     $this->assertSession()->pageTextContains('Visa ending in 1111');
-    $this->assertSession()->pageTextContains('Expires 2/2020');
+    $this->assertSession()->pageTextContains('Expires 2/2024');
     $this->submitForm([], 'Pay and complete purchase');
     $this->assertSession()->pageTextNotContains('Your order number is 1. You can view your order on your account page when logged in.');
     $this->assertSession()->pageTextContains('We encountered an error processing your payment method. Please verify your details and try again.');
@@ -544,6 +578,9 @@ class PaymentCheckoutTest extends CommerceWebDriverTestBase {
     $manual_gateway = PaymentGateway::load('manual');
     $manual_gateway->setStatus(FALSE);
     $manual_gateway->save();
+    $offiste_stored_gateway = PaymentGateway::load('stored_offsite');
+    $offiste_stored_gateway->setStatus(FALSE);
+    $offiste_stored_gateway->save();
 
     $payment_gateway = PaymentGateway::load('offsite');
     $payment_gateway->setPluginConfiguration([
@@ -671,6 +708,72 @@ class PaymentCheckoutTest extends CommerceWebDriverTestBase {
     // Confirm that only one payment was made.
     $payments = $payment_storage->loadMultipleByOrder($order);
     $this->assertCount(1, $payments);
+  }
+
+  /**
+   * Tests checkout with a stored off-site gateway (POST redirect method).
+   */
+  public function testCheckoutWithStoredOffsiteRedirectPost() {
+    // Remove the initial test payment methods.
+    PaymentMethod::load(1)->delete();
+    PaymentMethod::load(2)->delete();
+
+    $this->drupalGet($this->product->toUrl()->toString());
+    $this->submitForm([], 'Add to cart');
+    $this->drupalGet('checkout/1');
+    $this->assertSession()->fieldNotExists('Visa ending in 1111');
+    $radio_button = $this->getSession()->getPage()->findField('Credit card (Example Stored Offsite)');
+    $radio_button->click();
+    $this->assertSession()->assertWaitOnAjaxRequest();
+    $this->assertRenderedAddress($this->defaultAddress, 'payment_information[billing_information]');
+
+    $this->assertSession()->pageTextContains('Payment information');
+    $this->submitForm([], 'Continue to review');
+    $this->assertSession()->pageTextContains('Example');
+    $this->assertSession()->pageTextContains('Bryan Centarro');
+    $this->assertSession()->pageTextContains('9 Drupal Ave');
+    $this->submitForm([], 'Pay and complete purchase');
+    $this->assertSession()->pageTextContains('Your order number is 1. You can view your order on your account page when logged in.');
+
+    $order = Order::load(1);
+    $this->assertFalse($order->isLocked());
+    $this->assertEquals('stored_offsite', $order->get('payment_gateway')->target_id);
+    // @todo PaymentUpdater should sync this from the payment. https://www.drupal.org/project/commerce/issues/3137636
+    // $this->assertEquals(3, $order->get('payment_method')->target_id);
+    $payment = Payment::load(1);
+    $this->assertNotNull($payment);
+    $this->assertEquals($payment->getAmount(), $order->getTotalPrice());
+    // Verify that a reusable payment method was created.
+    $payment_method = $payment->getPaymentMethod();
+    $this->assertEquals(TRUE, $payment_method->isReusable());
+    $this->assertEquals('stored_offsite', $payment_method->getPaymentGatewayId());
+    $this->assertEquals(3, $payment_method->id());
+
+    // Assert that the created payment method can be loaded.
+    $this->drupalGet($this->product->toUrl()->toString());
+    $this->createScreenshot('../checkout_1.png');
+    $this->submitForm([], 'Add to cart');
+    $this->createScreenshot('../checkout_2.png');
+    $this->drupalGet('checkout/2');
+    $this->createScreenshot('../checkout_3.png');
+    $radio_button = $this->getSession()->getPage()->findField('Visa ending in 1111');
+    $radio_button->click();
+    $this->assertSession()->assertWaitOnAjaxRequest();
+    $this->submitForm([], 'Continue to review');
+    $this->submitForm([], 'Pay and complete purchase');
+    $this->assertSession()->pageTextContains('Your order number is 2. You can view your order on your account page when logged in.');
+
+    $order = Order::load(1);
+    $this->assertFalse($order->isLocked());
+    $this->assertEquals('stored_offsite', $order->get('payment_gateway')->target_id);
+    // @todo PaymentUpdater should sync this from the payment. https://www.drupal.org/project/commerce/issues/3137636
+    // $this->assertEquals(3, $order->get('payment_method')->target_id);
+    $payment = Payment::load(1);
+    $this->assertNotNull($payment);
+    $this->assertEquals($payment->getAmount(), $order->getTotalPrice());
+    $this->assertEquals('Z', $payment->getAvsResponseCode());
+    $this->assertEquals('ZIP', $payment->getAvsResponseCodeLabel());
+    $this->assertEquals(3, $payment->get('payment_method')->target_id);
   }
 
   /**

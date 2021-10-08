@@ -23,6 +23,12 @@ function commerce_price_theme() {
       ],
       'template' => 'commerce-price-plain',
     ],
+    'commerce_price_calculated' => [
+      'variables' => [
+        'calculated_price' => NULL,
+        'purchasable_entity' => NULL,
+      ],
+    ],
   ];
 }
 
@@ -55,8 +61,8 @@ function commerce_price_form_views_ui_config_item_form_alter(&$form, FormStateIn
     /** @var \Drupal\Core\Entity\EntityFieldManagerInterface $field_manager */
     $field_manager = \Drupal::service('entity_field.manager');
     $field_definitions = $field_manager->getFieldStorageDefinitions($entity_type_id);
-    $field_definition = $field_definitions[$field_name];
-    if ($field_definition->getType() != 'commerce_price') {
+    $field_definition = $field_definitions[$field_name] ?? NULL;
+    if (!$field_definition || $field_definition->getType() != 'commerce_price') {
       return;
     }
     // Remove the formatter from configurable fields, and non-applicable ones.

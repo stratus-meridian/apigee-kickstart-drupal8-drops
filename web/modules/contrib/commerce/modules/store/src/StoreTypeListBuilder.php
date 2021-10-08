@@ -15,7 +15,7 @@ class StoreTypeListBuilder extends ConfigEntityListBuilder {
    */
   public function buildHeader() {
     $header['label'] = $this->t('Store type');
-    $header['id'] = $this->t('Machine name');
+    $header['id'] = $this->t('ID');
     return $header + parent::buildHeader();
   }
 

@@ -2,15 +2,15 @@
 
 namespace Drupal\commerce_payment\Event;
 
+use Drupal\commerce\EventBase;
 use Drupal\commerce_payment\Entity\PaymentInterface;
-use Symfony\Component\EventDispatcher\Event;
 
 /**
  * Defines the payment event.
  *
  * @see \Drupal\commerce_payment\Event\PaymentEvents
  */
-class PaymentEvent extends Event {
+class PaymentEvent extends EventBase {
 
   /**
    * The payment.

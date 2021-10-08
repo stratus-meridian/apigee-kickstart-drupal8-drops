@@ -53,7 +53,7 @@ class ProductTypeListBuilder extends ConfigEntityListBuilder {
    */
   public function buildHeader() {
     $header['name'] = $this->t('Product type');
-    $header['type'] = $this->t('Machine name');
+    $header['type'] = $this->t('ID');
     $header['product_variation_type'] = $this->t('Product variation type');
     return $header + parent::buildHeader();
   }

@@ -22,6 +22,7 @@ use Drupal\Core\Field\BaseFieldDefinition;
  *     "access" = "Drupal\commerce_log\LogAccessControlHandler",
  *     "list_builder" = "Drupal\commerce_log\LogListBuilder",
  *     "storage" = "Drupal\commerce_log\LogStorage",
+ *     "storage_schema" = "Drupal\commerce_log\LogStorageSchema",
  *     "view_builder" = "Drupal\commerce_log\LogViewBuilder",
  *     "views_data" = "Drupal\commerce\CommerceEntityViewsData",
  *   },
@@ -171,7 +172,8 @@ class Log extends ContentEntityBase implements LogInterface {
 
     $fields['source_entity_type'] = BaseFieldDefinition::create('string')
       ->setLabel(t('Source entity type'))
-      ->setDescription(t('The source entity type'));
+      ->setDescription(t('The source entity type'))
+      ->setSetting('max_length', EntityTypeInterface::ID_MAX_LENGTH);
 
     $fields['params'] = BaseFieldDefinition::create('map')
       ->setLabel(t('Params'))

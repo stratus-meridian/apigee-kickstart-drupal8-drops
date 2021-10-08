@@ -4,6 +4,7 @@ namespace Drupal\commerce_product\Plugin\Commerce\Condition;
 
 use Drupal\commerce\EntityUuidMapperInterface;
 use Drupal\commerce\Plugin\Commerce\Condition\ConditionBase;
+use Drupal\commerce\Plugin\Commerce\Condition\PurchasableEntityConditionInterface;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
@@ -21,9 +22,16 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  *   weight = -1,
  * )
  */
-class OrderItemProduct extends ConditionBase implements ContainerFactoryPluginInterface {
+class OrderItemProduct extends ConditionBase implements PurchasableEntityConditionInterface, ContainerFactoryPluginInterface {
 
   use ProductTrait;
+
+  /**
+   * The entity type manager.
+   *
+   * @var \Drupal\Core\Entity\EntityTypeManagerInterface
+   */
+  protected $entityTypeManager;
 
   /**
    * Constructs a new OrderItemProduct object.
@@ -43,6 +51,7 @@ class OrderItemProduct extends ConditionBase implements ContainerFactoryPluginIn
   public function __construct(array $configuration, $plugin_id, $plugin_definition, EntityTypeManagerInterface $entity_type_manager, EntityUuidMapperInterface $entity_uuid_mapper) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
 
+    $this->entityTypeManager = $entity_type_manager;
     $this->productStorage = $entity_type_manager->getStorage('commerce_product');
     $this->entityUuidMapper = $entity_uuid_mapper;
   }
@@ -75,6 +84,35 @@ class OrderItemProduct extends ConditionBase implements ContainerFactoryPluginIn
     $product_ids = $this->getProductIds();
 
     return in_array($purchased_entity->getProductId(), $product_ids);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getPurchasableEntityIds() {
+    $variation_ids = [];
+
+    $product_ids = $this->getProductIds();
+    if (!empty($product_ids)) {
+      foreach ($this->productStorage->loadMultiple($product_ids) as $product) {
+        /** @var \Drupal\commerce_product\Entity\ProductInterface $product */
+        $variation_ids += $product->getVariationIds();
+      }
+    }
+
+    return array_values($variation_ids);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getPurchasableEntities() {
+    if ($entity_ids = $this->getPurchasableEntityIds()) {
+      $storage = $this->entityTypeManager->getStorage('commerce_product_variation');
+      $entities = $storage->loadMultiple($entity_ids);
+    }
+
+    return $entities ?? [];
   }
 
 }

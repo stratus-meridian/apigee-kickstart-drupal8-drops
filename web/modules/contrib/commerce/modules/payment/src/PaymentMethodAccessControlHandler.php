@@ -29,16 +29,24 @@ class PaymentMethodAccessControlHandler extends EntityAccessControlHandler {
       }
     }
 
-    if ($account->hasPermission($this->entityType->getAdminPermission())) {
-      return AccessResult::allowed()->cachePerPermissions();
+    $any_result = AccessResult::allowedIfHasPermissions($account, [
+      "$operation any commerce_payment_method",
+      $this->entityType->getAdminPermission(),
+    ], 'OR');
+
+    if ($any_result->isAllowed()) {
+      return $any_result;
     }
 
-    $result = AccessResult::allowedIf($account->id() == $entity->getOwnerId())
-      ->andIf(AccessResult::allowedIfHasPermission($account, 'manage own commerce_payment_method'))
-      ->addCacheableDependency($entity)
-      ->cachePerUser();
+    if ($account->id() == $entity->getOwnerId()) {
+      $own_result = AccessResult::allowedIfHasPermission($account, 'manage own commerce_payment_method')
+        ->addCacheableDependency($entity);
+    }
+    else {
+      $own_result = AccessResult::neutral()->cachePerPermissions();
+    }
 
-    return $result;
+    return $own_result->cachePerUser();
   }
 
   /**

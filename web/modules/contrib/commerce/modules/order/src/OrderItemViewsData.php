@@ -20,7 +20,7 @@ class OrderItemViewsData extends CommerceEntityViewsData {
     unset($data['commerce_order_item']['purchased_entity']['relationship']);
 
     // Collect all purchasable entity types.
-    $order_item_types = $this->getEntityTypeManager()->getStorage('commerce_order_item_type')->loadMultiple();
+    $order_item_types = $this->entityTypeManager->getStorage('commerce_order_item_type')->loadMultiple();
     $entity_type_ids = [];
     /** @var \Drupal\commerce_order\Entity\OrderItemTypeInterface $order_item_type */
     foreach ($order_item_types as $order_item_type) {
@@ -33,15 +33,15 @@ class OrderItemViewsData extends CommerceEntityViewsData {
 
     // Provide a relationship for each entity type found.
     foreach ($entity_type_ids as $entity_type_id) {
-      if (!$this->getEntityTypeManager()->hasDefinition($entity_type_id)) {
+      if (!$this->entityTypeManager->hasDefinition($entity_type_id)) {
         continue;
       }
       /** @var \Drupal\Core\Entity\EntityTypeInterface $entity_type */
-      $entity_type = $this->getEntityTypeManager()->getDefinition($entity_type_id);
+      $entity_type = $this->entityTypeManager->getDefinition($entity_type_id);
       $data['commerce_order_item'][$entity_type_id] = [
         'relationship' => [
           'title' => $entity_type->getLabel(),
-          'help' => t('The purchased @entity_type.', ['@entity_type' => $entity_type->getSingularLabel()]),
+          'help' => $this->t('The purchased @entity_type.', ['@entity_type' => $entity_type->getSingularLabel()]),
           'base' => $this->getViewsTableForEntityType($entity_type),
           'base field' => $entity_type->getKey('id'),
           'relationship field' => $table_mapping->getColumnNames('purchased_entity')['target_id'],
@@ -54,7 +54,7 @@ class OrderItemViewsData extends CommerceEntityViewsData {
       $data[$target_base_table]['reverse__commerce_order_item__purchased_entity'] = [
         'relationship' => [
           'title' => $this->entityType->getLabel(),
-          'help' => t('The @order_item_entity_type for this @entity_type.', [
+          'help' => $this->t('The @order_item_entity_type for this @entity_type.', [
             '@order_item_entity_type' => $this->entityType->getPluralLabel(),
             '@entity_type' => $entity_type->getSingularLabel(),
           ]),

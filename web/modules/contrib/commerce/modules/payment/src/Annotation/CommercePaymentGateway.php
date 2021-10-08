@@ -4,6 +4,7 @@ namespace Drupal\commerce_payment\Annotation;
 
 use Drupal\commerce_payment\CreditCard;
 use Drupal\Component\Annotation\Plugin;
+use Drupal\Core\StringTranslation\StringTranslationTrait;
 
 /**
  * Defines the payment gateway plugin annotation object.
@@ -15,6 +16,8 @@ use Drupal\Component\Annotation\Plugin;
  * @Annotation
  */
 class CommercePaymentGateway extends Plugin {
+
+  use StringTranslationTrait;
 
   /**
    * The plugin ID.
@@ -120,8 +123,8 @@ class CommercePaymentGateway extends Plugin {
   public function __construct(array $values) {
     if (empty($values['modes'])) {
       $values['modes'] = [
-        'test' => t('Test'),
-        'live' => t('Live'),
+        'test' => $this->t('Test'),
+        'live' => $this->t('Live'),
       ];
     }
     if (empty($values['payment_method_types'])) {

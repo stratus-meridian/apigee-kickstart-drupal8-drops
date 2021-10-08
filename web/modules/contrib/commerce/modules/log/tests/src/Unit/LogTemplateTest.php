@@ -33,7 +33,7 @@ class LogTemplateTest extends UnitTestCase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
     $this->logTemplate = new LogTemplate([], 'order', $this->definition);
   }

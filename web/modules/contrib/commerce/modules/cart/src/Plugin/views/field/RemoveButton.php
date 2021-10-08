@@ -88,9 +88,14 @@ class RemoveButton extends FieldPluginBase {
 
     $form[$this->options['id']]['#tree'] = TRUE;
     foreach ($this->view->result as $row_index => $row) {
+      $order_item = $this->getEntity($row);
+      if ($order_item->isLocked()) {
+        continue;
+      }
+
       $form[$this->options['id']][$row_index] = [
         '#type' => 'submit',
-        '#value' => t('Remove'),
+        '#value' => $this->t('Remove'),
         '#name' => 'delete-order-item-' . $row_index,
         '#remove_order_item' => TRUE,
         '#row_index' => $row_index,

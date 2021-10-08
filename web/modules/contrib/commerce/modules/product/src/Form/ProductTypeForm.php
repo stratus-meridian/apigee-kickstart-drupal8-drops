@@ -126,7 +126,7 @@ class ProductTypeForm extends CommerceBundleEntityFormBase {
     ];
     $form['product_status'] = [
       '#type' => 'checkbox',
-      '#title' => t('Publish new products of this type by default.'),
+      '#title' => $this->t('Publish new products of this type by default.'),
       '#default_value' => $product->isPublished(),
     ];
     $form = $this->buildTraitForm($form, $form_state);

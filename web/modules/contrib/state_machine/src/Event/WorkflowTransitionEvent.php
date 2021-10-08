@@ -114,7 +114,9 @@ class WorkflowTransitionEvent extends Event {
   /**
    * Gets the "from" state.
    *
-   * @deprecated
+   * @deprecated in state_machine:8.x-1.0-rc1 and is removed from state_machine:8.x-2.0.
+   *   Use $this->getField()->getOriginalId() instead.
+   * @see https://www.drupal.org/node/2982709
    *
    * @return \Drupal\state_machine\Plugin\Workflow\WorkflowState
    *   The "from" state.
@@ -127,7 +129,9 @@ class WorkflowTransitionEvent extends Event {
   /**
    * Gets the "to" state.
    *
-   * @deprecated
+   * @deprecated in state_machine:8.x-1.0-rc1 and is removed from state_machine:8.x-2.0.
+   *   Use $this->getTransition->getToState() instead.
+   * @see https://www.drupal.org/node/2982709
    *
    * @return \Drupal\state_machine\Plugin\Workflow\WorkflowState
    *   The "to" state.

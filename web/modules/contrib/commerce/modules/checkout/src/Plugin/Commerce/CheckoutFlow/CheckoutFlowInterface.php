@@ -30,6 +30,10 @@ interface CheckoutFlowInterface extends FormInterface, BaseFormIdInterface, Conf
   /**
    * Gets the previous step ID for the given step ID.
    *
+   * Note that we’re not calling getVisibleSteps() on purpose here to bypass
+   * its static caching which may no longer be valid due to previous panes
+   * altering the order.
+   *
    * @param string $step_id
    *   The step ID.
    *
@@ -40,6 +44,10 @@ interface CheckoutFlowInterface extends FormInterface, BaseFormIdInterface, Conf
 
   /**
    * Gets the next step ID for the given step ID.
+   *
+   * Note that we’re not calling getVisibleSteps() on purpose here to bypass
+   * its static caching which may no longer be valid due to previous panes
+   * altering the order.
    *
    * @param string $step_id
    *   The step ID.

@@ -13,9 +13,9 @@
  * @ingroup themeable
  */
 #}
-{% spaceless %}
+{% apply spaceless %}
   {{ link }}
 {% if format and size %}
   ({{ format }}, {{ size }})
 {% endif %}
-{% endspaceless %}
+{% endapply %}

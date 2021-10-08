@@ -2,6 +2,7 @@
 
 namespace Drupal\commerce_number_pattern\Form;
 
+use Drupal\commerce\InlineFormManager;
 use Drupal\commerce_number_pattern\NumberPatternManager;
 use Drupal\Component\Utility\Html;
 use Drupal\Core\Entity\EntityForm;
@@ -29,16 +30,26 @@ class NumberPatternForm extends EntityForm {
   protected $pluginManager;
 
   /**
+   * The inline form manager.
+   *
+   * @var \Drupal\commerce\InlineFormManager
+   */
+  protected $inlineFormManager;
+
+  /**
    * Constructs a new NumberPatternForm object.
    *
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
    *   The entity type manager.
    * @param \Drupal\commerce_number_pattern\NumberPatternManager $plugin_manager
    *   The number pattern plugin manager.
+   * @param \Drupal\commerce\InlineFormManager $inline_form_manager
+   *   The inline form manager.
    */
-  public function __construct(EntityTypeManagerInterface $entity_type_manager, NumberPatternManager $plugin_manager) {
+  public function __construct(EntityTypeManagerInterface $entity_type_manager, NumberPatternManager $plugin_manager, InlineFormManager $inline_form_manager) {
     $this->entityTypeManager = $entity_type_manager;
     $this->pluginManager = $plugin_manager;
+    $this->inlineFormManager = $inline_form_manager;
   }
 
   /**
@@ -47,7 +58,8 @@ class NumberPatternForm extends EntityForm {
   public static function create(ContainerInterface $container) {
     return new static(
       $container->get('entity_type.manager'),
-      $container->get('plugin.manager.commerce_number_pattern')
+      $container->get('plugin.manager.commerce_number_pattern'),
+      $container->get('plugin.manager.commerce_inline_form')
     );
   }
 
@@ -89,6 +101,7 @@ class NumberPatternForm extends EntityForm {
       $option_ids = array_keys($options);
       $target_entity_type_id = reset($option_ids);
     }
+    $form_state->set('target_entity_type', $target_entity_type_id);
 
     $form['label'] = [
       '#type' => 'textfield',
@@ -133,13 +146,14 @@ class NumberPatternForm extends EntityForm {
         'wrapper' => $wrapper_id,
       ],
     ];
-    $form['configuration'] = [
-      '#type' => 'commerce_plugin_configuration',
-      '#plugin_type' => 'commerce_number_pattern',
-      '#plugin_id' => $plugin,
-      '#default_value' => $plugin_configuration,
-      "#entity_type" => $target_entity_type_id,
-    ];
+    $inline_form = $this->inlineFormManager->createInstance('plugin_configuration', [
+      'plugin_type' => 'commerce_number_pattern',
+      'plugin_id' => $plugin,
+      'plugin_configuration' => $plugin_configuration,
+    ]);
+    $form['configuration']['#inline_form'] = $inline_form;
+    $form['configuration']['#parents'] = ['configuration'];
+    $form['configuration'] = $inline_form->buildInlineForm($form['configuration'], $form_state);
 
     return $form;
   }

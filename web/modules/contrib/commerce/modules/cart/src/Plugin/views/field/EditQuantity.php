@@ -151,22 +151,80 @@ class EditQuantity extends FieldPluginBase {
         $precision = 0;
       }
 
-      $form[$this->options['id']][$row_index] = [
-        '#type' => 'number',
-        '#title' => $this->t('Quantity'),
-        '#title_display' => 'invisible',
-        '#default_value' => round($order_item->getQuantity(), $precision),
-        '#size' => 4,
-        '#min' => 0,
-        '#max' => 9999,
-        '#step' => $step,
-        '#required' => TRUE,
-      ];
+      if (!$order_item->isLocked()) {
+        $form[$this->options['id']][$row_index] = [
+          '#type' => 'number',
+          '#title' => $this->t('Quantity'),
+          '#title_display' => 'invisible',
+          '#default_value' => round($order_item->getQuantity(), $precision),
+          '#size' => 4,
+          '#min' => 0,
+          '#max' => 9999,
+          '#step' => $step,
+          '#required' => TRUE,
+          '#attributes' => [
+            'class' => [
+              'quantity-edit-input',
+            ],
+          ],
+        ];
+      }
+      else {
+        $form[$this->options['id']][$row_index] = [
+          '#type' => 'item',
+          '#plain_text' => round($order_item->getQuantity(), $precision),
+        ];
+      }
     }
+
     $form['actions']['submit']['#update_cart'] = TRUE;
     $form['actions']['submit']['#show_update_message'] = TRUE;
     // Replace the form submit button label.
     $form['actions']['submit']['#value'] = $this->t('Update cart');
+  }
+
+  /**
+   * Validate handler for the views form.
+   *
+   * @param array $form
+   *   An associative array containing the structure of the form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The current state of the form.
+   */
+  public function viewsFormValidate(array &$form, FormStateInterface $form_state) {
+    $triggering_element = $form_state->getTriggeringElement();
+    if (empty($triggering_element['#update_cart'])) {
+      // Don't run when the "Remove" or "Empty cart" buttons are pressed.
+      return;
+    }
+    $quantities = $form_state->getValue($this->options['id'], []);
+    foreach ($quantities as $row_index => $quantity) {
+      if (!is_numeric($quantity) || $quantity <= 0) {
+        continue;
+      }
+      /** @var \Drupal\commerce_order\Entity\OrderItemInterface $order_item */
+      $order_item = $this->getEntity($this->view->result[$row_index]);
+      if ($order_item->getQuantity() == $quantity) {
+        // The quantity hasn't changed.
+        continue;
+      }
+      // Save the original quantity so it can be restored after validation.
+      $original_quantity = $order_item->getQuantity();
+      // Set the new quantity so the right quantity is validated.
+      $order_item->setQuantity($quantity);
+      $violations = $order_item
+        ->validate()
+        ->filterByFields(array_diff(array_keys($order_item->getFieldDefinitions()), ['purchased_entity', 'quantity']));
+
+      foreach ($violations as $violation) {
+        /** @var \Symfony\Component\Validator\ConstraintViolationInterface $violation */
+        $form_state->setError($form[$this->options['id']][$row_index], $violation->getMessage());
+      }
+
+      // Restore the quantity so the logic in viewsFormSubmit() proceeds with
+      // the quantity update.
+      $order_item->setQuantity($original_quantity);
+    }
   }
 
   /**

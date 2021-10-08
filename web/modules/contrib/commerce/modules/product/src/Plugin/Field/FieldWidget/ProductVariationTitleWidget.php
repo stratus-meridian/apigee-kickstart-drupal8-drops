@@ -107,12 +107,16 @@ class ProductVariationTitleWidget extends ProductVariationWidgetBase implements 
       '#prefix' => '<div id="' . $wrapper_id . '">',
       '#suffix' => '</div>',
     ];
-    $parents = array_merge($element['#field_parents'], [$items->getName(), $delta]);
-    $user_input = (array) NestedArray::getValue($form_state->getUserInput(), $parents);
-    if (!empty($user_input)) {
+    // If an operation caused the form to rebuild, select the variation from
+    // the user's current input.
+    $selected_variation = NULL;
+    if ($form_state->isRebuilding()) {
+      $parents = array_merge($element['#field_parents'], [$items->getName(), $delta]);
+      $user_input = (array) NestedArray::getValue($form_state->getUserInput(), $parents);
       $selected_variation = $this->selectVariationFromUserInput($variations, $user_input);
     }
-    else {
+    // Otherwise, fallback to the default.
+    if (!$selected_variation) {
       $selected_variation = $this->getDefaultVariation($product, $variations);
     }
 
@@ -155,7 +159,7 @@ class ProductVariationTitleWidget extends ProductVariationWidgetBase implements 
    */
   protected function selectVariationFromUserInput(array $variations, array $user_input) {
     $current_variation = NULL;
-    if (!empty($user_input['variation']) && $variations[$user_input['variation']]) {
+    if (!empty($user_input['variation']) && isset($variations[$user_input['variation']])) {
       $current_variation = $variations[$user_input['variation']];
     }
 

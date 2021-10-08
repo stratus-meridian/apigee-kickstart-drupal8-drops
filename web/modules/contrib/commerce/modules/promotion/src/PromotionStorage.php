@@ -4,7 +4,6 @@ namespace Drupal\commerce_promotion;
 
 use Drupal\commerce\CommerceContentEntityStorage;
 use Drupal\commerce_order\Entity\OrderInterface;
-use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Core\Cache\CacheBackendInterface;
 use Drupal\Core\Cache\MemoryCache\MemoryCacheInterface;
 use Drupal\Core\Database\Connection;
@@ -30,13 +29,6 @@ class PromotionStorage extends CommerceContentEntityStorage implements Promotion
   protected $usage;
 
   /**
-   * The time.
-   *
-   * @var \Drupal\Component\Datetime\TimeInterface
-   */
-  protected $time;
-
-  /**
    * Constructs a new PromotionStorage object.
    *
    * @param \Drupal\Core\Entity\EntityTypeInterface $entity_type
@@ -59,14 +51,11 @@ class PromotionStorage extends CommerceContentEntityStorage implements Promotion
    *   The event dispatcher.
    * @param \Drupal\commerce_promotion\PromotionUsageInterface $usage
    *   The usage.
-   * @param \Drupal\Component\Datetime\TimeInterface $time
-   *   The time.
    */
-  public function __construct(EntityTypeInterface $entity_type, Connection $database, EntityFieldManagerInterface $entity_field_manager, CacheBackendInterface $cache, LanguageManagerInterface $language_manager, MemoryCacheInterface $memory_cache, EntityTypeBundleInfoInterface $entity_type_bundle_info, EntityTypeManagerInterface $entity_type_manager, EventDispatcherInterface $event_dispatcher, PromotionUsageInterface $usage, TimeInterface $time) {
+  public function __construct(EntityTypeInterface $entity_type, Connection $database, EntityFieldManagerInterface $entity_field_manager, CacheBackendInterface $cache, LanguageManagerInterface $language_manager, MemoryCacheInterface $memory_cache, EntityTypeBundleInfoInterface $entity_type_bundle_info, EntityTypeManagerInterface $entity_type_manager, EventDispatcherInterface $event_dispatcher, PromotionUsageInterface $usage) {
     parent::__construct($entity_type, $database, $entity_field_manager, $cache, $language_manager, $memory_cache, $entity_type_bundle_info, $entity_type_manager, $event_dispatcher);
 
     $this->usage = $usage;
-    $this->time = $time;
   }
 
   /**
@@ -83,8 +72,7 @@ class PromotionStorage extends CommerceContentEntityStorage implements Promotion
       $container->get('entity_type.bundle.info'),
       $container->get('entity_type.manager'),
       $container->get('event_dispatcher'),
-      $container->get('commerce_promotion.usage'),
-      $container->get('datetime.time')
+      $container->get('commerce_promotion.usage')
     );
   }
 
@@ -116,7 +104,7 @@ class PromotionStorage extends CommerceContentEntityStorage implements Promotion
     }
 
     $promotions = $this->loadMultiple($result);
-    // Remove any promotions that have hit their usage limit.
+    // Remove any promotions that do not have a usage limit.
     $promotions_with_usage_limits = array_filter($promotions, function ($promotion) {
       /** @var \Drupal\commerce_promotion\Entity\PromotionInterface $promotion */
       return !empty($promotion->getUsageLimit());
@@ -126,6 +114,27 @@ class PromotionStorage extends CommerceContentEntityStorage implements Promotion
       /** @var \Drupal\commerce_promotion\Entity\PromotionInterface $promotion */
       if ($promotion->getUsageLimit() <= $usages[$promotion_id]) {
         unset($promotions[$promotion_id]);
+      }
+    }
+    // Remove any promotions that do not have a customer usage limit.
+    $promotions_with_customer_usage_limits = array_filter($promotions, function ($promotion) {
+      /** @var \Drupal\commerce_promotion\Entity\PromotionInterface $promotion */
+      return !empty($promotion->getCustomerUsageLimit());
+    });
+    // Email is required for promotions that have customer usage limits.
+    $email = $order->getEmail();
+    if (!$email) {
+      foreach ($promotions_with_customer_usage_limits as $promotion_id => $promotion) {
+        unset($promotions[$promotion_id]);
+      }
+    }
+    else {
+      $customer_usages = $this->usage->loadMultiple($promotions_with_customer_usage_limits, $email);
+      foreach ($promotions_with_customer_usage_limits as $promotion_id => $promotion) {
+        /** @var \Drupal\commerce_promotion\Entity\PromotionInterface $promotion */
+        if ($promotion->getCustomerUsageLimit() <= $customer_usages[$promotion_id]) {
+          unset($promotions[$promotion_id]);
+        }
       }
     }
     // Sort the remaining promotions.

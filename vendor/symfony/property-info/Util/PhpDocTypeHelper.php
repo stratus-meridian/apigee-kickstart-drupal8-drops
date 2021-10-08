@@ -90,7 +90,7 @@ final class PhpDocTypeHelper
         $docType = $docType ?? (string) $type;
 
         if ($type instanceof Collection) {
-            list($phpType, $class) = $this->getPhpTypeAndClass((string) $type->getFqsen());
+            [$phpType, $class] = $this->getPhpTypeAndClass((string) $type->getFqsen());
 
             $key = $this->getTypes($type->getKeyType());
             $value = $this->getTypes($type->getValueType());
@@ -108,7 +108,7 @@ final class PhpDocTypeHelper
             return null;
         }
 
-        if ('[]' === substr($docType, -2)) {
+        if (str_ends_with($docType, '[]')) {
             if ('mixed[]' === $docType) {
                 $collectionKeyType = null;
                 $collectionValueType = null;
@@ -121,7 +121,7 @@ final class PhpDocTypeHelper
         }
 
         $docType = $this->normalizeType($docType);
-        list($phpType, $class) = $this->getPhpTypeAndClass($docType);
+        [$phpType, $class] = $this->getPhpTypeAndClass($docType);
 
         if ('array' === $docType) {
             return new Type(Type::BUILTIN_TYPE_ARRAY, $nullable, null, true, null, null);
@@ -158,6 +158,10 @@ final class PhpDocTypeHelper
     {
         if (\in_array($docType, Type::$builtinTypes)) {
             return [$docType, null];
+        }
+
+        if (\in_array($docType, ['parent', 'self', 'static'], true)) {
+            return ['object', $docType];
         }
 
         return ['object', substr($docType, 1)];

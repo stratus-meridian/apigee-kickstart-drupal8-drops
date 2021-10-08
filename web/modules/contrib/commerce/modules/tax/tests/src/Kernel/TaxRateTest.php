@@ -14,28 +14,26 @@ class TaxRateTest extends CommerceKernelTestBase {
 
   /**
    * @covers ::__construct
-   *
-   * @expectedException \InvalidArgumentException
    */
   public function testMissingProperty() {
+    $this->expectException(\InvalidArgumentException::class);
     $definition = [
       'id' => 'test',
     ];
-    $rate = new TaxRate($definition);
+    new TaxRate($definition);
   }
 
   /**
    * @covers ::__construct
-   *
-   * @expectedException \InvalidArgumentException
    */
   public function testInvalidPercentages() {
+    $this->expectException(\InvalidArgumentException::class);
     $definition = [
       'id' => 'test',
       'label' => 'Test',
       'percentages' => 'WRONG',
     ];
-    $rate = new TaxRate($definition);
+    new TaxRate($definition);
   }
 
   /**
@@ -45,6 +43,7 @@ class TaxRateTest extends CommerceKernelTestBase {
    * @covers ::getPercentages
    * @covers ::getPercentage
    * @covers ::isDefault
+   * @covers ::toArray
    */
   public function testValid() {
     // Can't use a unit test because DrupalDateTime objects use \Drupal.
@@ -77,6 +76,7 @@ class TaxRateTest extends CommerceKernelTestBase {
     $percentage = $rate->getPercentage();
     $this->assertEquals($percentage, $rate->getPercentages()[1]);
     $this->assertEquals($definition['percentages'][1]['number'], $percentage->getNumber());
+    $this->assertEquals($definition, $rate->toArray());
   }
 
 }

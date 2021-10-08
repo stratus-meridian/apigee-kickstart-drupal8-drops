@@ -26,18 +26,27 @@ class OrderItemFixedAmountOff extends OrderItemPromotionOfferBase {
     $this->assertEntity($entity);
     /** @var \Drupal\commerce_order\Entity\OrderItemInterface $order_item */
     $order_item = $entity;
-    $total_price = $order_item->getTotalPrice();
+    $adjusted_total_price = $order_item->getAdjustedTotalPrice(['promotion']);
     $amount = $this->getAmount();
-    if ($total_price->getCurrencyCode() != $amount->getCurrencyCode()) {
+    if ($adjusted_total_price->getCurrencyCode() != $amount->getCurrencyCode()) {
       return;
     }
     if ($this->configuration['display_inclusive']) {
-      // Display-inclusive promotions must first be applied to the unit price.
-      $unit_price = $order_item->getUnitPrice();
-      if ($amount->greaterThan($unit_price)) {
-        // Don't reduce the unit price past zero.
-        $amount = $unit_price;
+      // First, get the adjusted unit price to ensure the order item is not
+      // already fully discounted.
+      $adjusted_unit_price = $order_item->getAdjustedUnitPrice(['promotion']);
+
+      // The adjusted unit price is already reduced to 0, no need to continue
+      // further.
+      if ($adjusted_unit_price->isZero()) {
+        return;
       }
+      // Display-inclusive promotions must first be applied to the unit price.
+      if ($amount->greaterThan($adjusted_unit_price)) {
+        // Don't reduce the unit price past zero.
+        $amount = $adjusted_unit_price;
+      }
+      $unit_price = $order_item->getUnitPrice();
       $new_unit_price = $unit_price->subtract($amount);
       $order_item->setUnitPrice($new_unit_price);
       $adjustment_amount = $amount->multiply($order_item->getQuantity());
@@ -46,10 +55,15 @@ class OrderItemFixedAmountOff extends OrderItemPromotionOfferBase {
     else {
       $adjustment_amount = $amount->multiply($order_item->getQuantity());
       $adjustment_amount = $this->rounder->round($adjustment_amount);
-      if ($adjustment_amount->greaterThan($total_price)) {
+      if ($adjustment_amount->greaterThan($adjusted_total_price)) {
         // Don't reduce the order item total price past zero.
-        $adjustment_amount = $total_price;
+        $adjustment_amount = $adjusted_total_price;
       }
+    }
+
+    // Skip applying the promotion if there's no amount to discount.
+    if ($adjustment_amount->isZero()) {
+      return;
     }
 
     $order_item->addAdjustment(new Adjustment([

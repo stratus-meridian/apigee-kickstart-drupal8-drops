@@ -123,7 +123,9 @@ class CartProvider implements CartProviderInterface {
       $this->cartSession->addCartId($cart->id(), CartSession::COMPLETED);
     }
     // Remove the cart order from the internal cache, if present.
-    unset($this->cartData[$cart->getCustomerId()][$cart->id()]);
+    if (isset($this->cartData[$cart->getCustomerId()][$cart->id()])) {
+      unset($this->cartData[$cart->getCustomerId()][$cart->id()]);
+    }
   }
 
   /**
@@ -160,9 +162,9 @@ class CartProvider implements CartProviderInterface {
   /**
    * {@inheritdoc}
    */
-  public function getCarts(AccountInterface $account = NULL) {
+  public function getCarts(AccountInterface $account = NULL, StoreInterface $store = NULL) {
     $carts = [];
-    $cart_ids = $this->getCartIds($account);
+    $cart_ids = $this->getCartIds($account, $store);
     if ($cart_ids) {
       $carts = $this->orderStorage->loadMultiple($cart_ids);
     }
@@ -173,8 +175,12 @@ class CartProvider implements CartProviderInterface {
   /**
    * {@inheritdoc}
    */
-  public function getCartIds(AccountInterface $account = NULL) {
-    $cart_data = $this->loadCartData($account);
+  public function getCartIds(AccountInterface $account = NULL, StoreInterface $store = NULL) {
+    // Filter out cart IDS that do not belong to the store passed.
+    $cart_data = array_filter($this->loadCartData($account), function ($data) use ($store) {
+      return !$store || $store->id() === $data['store_id'];
+    });
+
     return array_keys($cart_data);
   }
 

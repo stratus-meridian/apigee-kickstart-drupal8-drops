@@ -10,6 +10,12 @@ payment_method_icons:
     theme:
       css/commerce_payment.payment_method_icons.css: {}
 
+payment_summary:
+  version: VERSION
+  css:
+    theme:
+      css/commerce_payment.payment_summary.css: {}
+
 offsite_redirect:
   version: VERSION
   js:

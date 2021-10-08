@@ -4,8 +4,10 @@ namespace Drupal\commerce_order\Entity;
 
 use Drupal\commerce\Entity\CommerceContentEntityBase;
 use Drupal\commerce_order\Adjustment;
+use Drupal\commerce_order\Exception\OrderVersionMismatchException;
 use Drupal\commerce_order\Event\OrderEvents;
 use Drupal\commerce_order\Event\OrderProfilesEvent;
+use Drupal\commerce_order\OrderBalanceFieldItemList;
 use Drupal\commerce_price\Price;
 use Drupal\commerce_store\Entity\StoreInterface;
 use Drupal\Core\Datetime\DrupalDateTime;
@@ -35,6 +37,7 @@ use Drupal\profile\Entity\ProfileInterface;
  *   handlers = {
  *     "event" = "Drupal\commerce_order\Event\OrderEvent",
  *     "storage" = "Drupal\commerce_order\OrderStorage",
+ *     "storage_schema" = "Drupal\commerce\CommerceContentEntityStorageSchema",
  *     "access" = "Drupal\commerce_order\OrderAccessControlHandler",
  *     "query_access" = "Drupal\commerce_order\OrderQueryAccessHandler",
  *     "permission_provider" = "Drupal\commerce_order\OrderPermissionProvider",
@@ -55,10 +58,15 @@ use Drupal\profile\Entity\ProfileInterface;
  *       "default" = "Drupal\commerce_order\OrderRouteProvider",
  *       "delete-multiple" = "Drupal\entity\Routing\DeleteMultipleRouteProvider",
  *     },
+ *     "entity_print" = "Drupal\commerce_order\EntityPrint\OrderRenderer"
  *   },
  *   base_table = "commerce_order",
  *   admin_permission = "administer commerce_order",
  *   permission_granularity = "bundle",
+ *   field_indexes = {
+ *     "order_number",
+ *     "state"
+ *   },
  *   entity_keys = {
  *     "id" = "order_id",
  *     "label" = "order_number",
@@ -73,11 +81,16 @@ use Drupal\profile\Entity\ProfileInterface;
  *     "reassign-form" = "/admin/commerce/orders/{commerce_order}/reassign",
  *     "unlock-form" = "/admin/commerce/orders/{commerce_order}/unlock",
  *     "collection" = "/admin/commerce/orders",
- *     "resend-receipt-form" = "/admin/commerce/orders/{commerce_order}/resend-receipt"
+ *     "resend-receipt-form" = "/admin/commerce/orders/{commerce_order}/resend-receipt",
+ *     "state-transition-form" = "/admin/commerce/orders/{commerce_order}/{field_name}/{transition_id}"
  *   },
  *   bundle_entity_type = "commerce_order_type",
  *   field_ui_base_route = "entity.commerce_order_type.edit_form",
  *   allow_number_patterns = TRUE,
+ *   log_version_mismatch = TRUE,
+ *   constraints = {
+ *     "OrderVersion" = {}
+ *   }
  * )
  */
 class Order extends CommerceContentEntityBase implements OrderInterface {
@@ -96,6 +109,21 @@ class Order extends CommerceContentEntityBase implements OrderInterface {
    */
   public function setOrderNumber($order_number) {
     $this->set('order_number', $order_number);
+    return $this;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getVersion() {
+    return $this->get('version')->value;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setVersion($version) {
+    $this->set('version', $version);
     return $this;
   }
 
@@ -628,6 +656,18 @@ class Order extends CommerceContentEntityBase implements OrderInterface {
   public function preSave(EntityStorageInterface $storage) {
     parent::preSave($storage);
 
+    if (isset($this->original) && !$this->isNew() && $this->original->getVersion() > $this->getVersion()) {
+      $mismatch_exception = new OrderVersionMismatchException(sprintf('Attempted to save order %s with version %s. Current version is %s.', $this->id(), $this->getVersion(), $this->original->getVersion()));
+      $log_only = $this->getEntityType()->get('log_version_mismatch');
+      if ($log_only) {
+        watchdog_exception('commerce_order', $mismatch_exception);
+      }
+      else {
+        throw $mismatch_exception;
+      }
+    }
+    $this->setVersion($this->getVersion() + 1);
+
     if ($this->isNew() && !$this->getIpAddress()) {
       $this->setIpAddress(\Drupal::request()->getClientIp());
     }
@@ -708,6 +748,14 @@ class Order extends CommerceContentEntityBase implements OrderInterface {
       ->setDisplayConfigurable('form', TRUE)
       ->setDisplayConfigurable('view', TRUE);
 
+    $fields['version'] = BaseFieldDefinition::create('integer')
+      ->setLabel(t('Version'))
+      ->setDescription(t('The order version number, it gets incremented on each save.'))
+      ->setReadOnly(TRUE)
+      ->setSetting('unsigned', TRUE)
+      // Default to zero, so that the first save is version one.
+      ->setDefaultValue(0);
+
     $fields['store_id'] = BaseFieldDefinition::create('entity_reference')
       ->setLabel(t('Store'))
       ->setDescription(t('The store to which the order belongs.'))
@@ -769,7 +817,7 @@ class Order extends CommerceContentEntityBase implements OrderInterface {
       ->setDescription(t('Billing profile'))
       ->setSetting('target_type', 'profile')
       ->setSetting('handler', 'default')
-      ->setSetting('handler_settings', ['target_bundles' => ['customer']])
+      ->setSetting('handler_settings', ['target_bundles' => ['customer' => 'customer']])
       ->setTranslatable(TRUE)
       ->setDisplayOptions('form', [
         'type' => 'commerce_billing_profile',
@@ -830,6 +878,15 @@ class Order extends CommerceContentEntityBase implements OrderInterface {
       ->setDisplayConfigurable('form', FALSE)
       ->setDisplayConfigurable('view', TRUE);
 
+    $fields['balance'] = BaseFieldDefinition::create('commerce_price')
+      ->setLabel(t('Order balance'))
+      ->setDescription(t('The order balance.'))
+      ->setReadOnly(TRUE)
+      ->setComputed(TRUE)
+      ->setClass(OrderBalanceFieldItemList::class)
+      ->setDisplayConfigurable('form', FALSE)
+      ->setDisplayConfigurable('view', TRUE);
+
     $fields['state'] = BaseFieldDefinition::create('state')
       ->setLabel(t('State'))
       ->setDescription(t('The order state.'))
@@ -838,6 +895,10 @@ class Order extends CommerceContentEntityBase implements OrderInterface {
       ->setDisplayOptions('view', [
         'label' => 'hidden',
         'type' => 'state_transition_form',
+        'settings' => [
+          'require_confirmation' => TRUE,
+          'use_modal' => TRUE,
+        ],
         'weight' => 10,
       ])
       ->setDisplayConfigurable('form', TRUE)

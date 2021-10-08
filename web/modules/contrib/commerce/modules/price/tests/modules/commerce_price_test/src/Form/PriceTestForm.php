@@ -49,7 +49,7 @@ class PriceTestForm extends FormBase {
     // Create a Price to ensure the values are valid.
     $values = $form_state->getValues();
     $price = Price::fromArray($values['amount']);
-    $this->messenger()->addMessage(t('The number is "@number" and the currency code is "@currency_code".', [
+    $this->messenger()->addMessage($this->t('The number is "@number" and the currency code is "@currency_code".', [
       '@number' => $price->getNumber(),
       '@currency_code' => $price->getCurrencyCode(),
     ]));

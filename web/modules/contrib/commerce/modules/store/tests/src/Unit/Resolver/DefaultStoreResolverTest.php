@@ -21,7 +21,7 @@ class DefaultStoreResolverTest extends UnitTestCase {
   /**
    * {@inheritdoc}
    */
-  public function setUp() {
+  protected function setUp(): void {
     $storage = $this->getMockBuilder('Drupal\commerce_store\StoreStorage')
       ->disableOriginalConstructor()
       ->getMock();

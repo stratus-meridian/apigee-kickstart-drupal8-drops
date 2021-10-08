@@ -56,7 +56,7 @@ abstract class ProductBrowserTestBase extends CommerceBrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->stores = [$this->store];

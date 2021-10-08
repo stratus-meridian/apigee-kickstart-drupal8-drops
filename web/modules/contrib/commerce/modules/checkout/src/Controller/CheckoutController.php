@@ -2,6 +2,7 @@
 
 namespace Drupal\commerce_checkout\Controller;
 
+use Drupal\commerce_cart\CartProviderInterface;
 use Drupal\commerce_cart\CartSession;
 use Drupal\commerce_cart\CartSessionInterface;
 use Drupal\commerce_checkout\CheckoutOrderManagerInterface;
@@ -9,8 +10,11 @@ use Drupal\Core\Access\AccessResult;
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
 use Drupal\Core\DependencyInjection\DependencySerializationTrait;
 use Drupal\Core\Form\FormBuilderInterface;
+use Drupal\Core\Messenger\MessengerInterface;
+use Drupal\Core\Messenger\MessengerTrait;
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\Core\Session\AccountInterface;
+use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Drupal\Core\Url;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -21,6 +25,8 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 class CheckoutController implements ContainerInjectionInterface {
 
   use DependencySerializationTrait;
+  use MessengerTrait;
+  use StringTranslationTrait;
 
   /**
    * The checkout order manager.
@@ -44,6 +50,13 @@ class CheckoutController implements ContainerInjectionInterface {
   protected $cartSession;
 
   /**
+   * The cart provider.
+   *
+   * @var \Drupal\commerce_cart\CartProviderInterface
+   */
+  protected $cartProvider;
+
+  /**
    * Constructs a new CheckoutController object.
    *
    * @param \Drupal\commerce_checkout\CheckoutOrderManagerInterface $checkout_order_manager
@@ -52,11 +65,17 @@ class CheckoutController implements ContainerInjectionInterface {
    *   The form builder.
    * @param \Drupal\commerce_cart\CartSessionInterface $cart_session
    *   The cart session.
+   * @param \Drupal\commerce_cart\CartProviderInterface $cart_provider
+   *   The cart session.
+   * @param \Drupal\Core\Messenger\MessengerInterface $messenger
+   *   The messenger.
    */
-  public function __construct(CheckoutOrderManagerInterface $checkout_order_manager, FormBuilderInterface $form_builder, CartSessionInterface $cart_session) {
+  public function __construct(CheckoutOrderManagerInterface $checkout_order_manager, FormBuilderInterface $form_builder, CartSessionInterface $cart_session, CartProviderInterface $cart_provider, MessengerInterface $messenger) {
     $this->checkoutOrderManager = $checkout_order_manager;
     $this->formBuilder = $form_builder;
     $this->cartSession = $cart_session;
+    $this->cartProvider = $cart_provider;
+    $this->messenger = $messenger;
   }
 
   /**
@@ -66,8 +85,38 @@ class CheckoutController implements ContainerInjectionInterface {
     return new static(
       $container->get('commerce_checkout.checkout_order_manager'),
       $container->get('form_builder'),
-      $container->get('commerce_cart.cart_session')
+      $container->get('commerce_cart.cart_session'),
+      $container->get('commerce_cart.cart_provider'),
+      $container->get('messenger')
     );
+  }
+
+  /**
+   * Convenience method to send user to checkout via a parameter-free route.
+   *
+   * @return array|\Symfony\Component\HttpFoundation\RedirectResponse
+   *   The checkout page.
+   */
+  public function checkoutRedirect() {
+    $carts = $this->cartProvider->getCarts();
+    $carts = array_filter($carts, function ($cart) {
+      /** @var \Drupal\commerce_order\Entity\OrderInterface $cart */
+      return $cart->hasItems();
+    });
+    // If there are more than one cart, or no carts, redirect to the cart page.
+    if (!$carts) {
+      $this->messenger->addMessage($this->t('Add some items to your cart and then try checking out.'));
+      $redirect_url = Url::fromRoute('commerce_cart.page');
+    }
+    elseif (count($carts) > 1) {
+      $redirect_url = Url::fromRoute('commerce_cart.page');
+    }
+    else {
+      $cart = reset($carts);
+      $redirect_url = Url::fromRoute('commerce_checkout.form', ['commerce_order' => $cart->id()]);
+    }
+
+    return new RedirectResponse($redirect_url->toString());
   }
 
   /**

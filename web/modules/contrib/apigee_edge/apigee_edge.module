@@ -19,7 +19,6 @@
  */
 
 /**
- * @file
  * Main module file for Apigee Edge.
  */
 
@@ -32,6 +31,7 @@ use Drupal\apigee_edge\Element\StatusPropertyElement;
 use Drupal\apigee_edge\Entity\ApiProduct;
 use Drupal\apigee_edge\Entity\AppInterface;
 use Drupal\apigee_edge\Entity\Developer;
+use Drupal\apigee_edge\Exception\DeveloperUpdateFailedException;
 use Drupal\apigee_edge\Exception\UserDeveloperConversionNoStorageFormatterFoundException;
 use Drupal\apigee_edge\Exception\UserDeveloperConversionUserFieldDoesNotExistException;
 use Drupal\apigee_edge\Form\DeveloperSettingsForm;
@@ -134,6 +134,19 @@ function apigee_edge_theme() {
     'status_property' => [
       'render element' => 'element',
     ],
+    'apigee_secret' => [
+      'render element' => 'elements',
+      'base hook' => 'apigee_secret',
+    ],
+  ];
+}
+
+/**
+ * Preprocess variables for the apigee_secret element template.
+ */
+function template_preprocess_apigee_secret(&$variables) {
+  $variables['value'] = [
+    '#markup' => $variables['elements']['#value'],
   ];
 }
 
@@ -338,6 +351,12 @@ function apigee_edge_entity_extra_field_info() {
         'weight' => 100,
         'visible' => TRUE,
       ];
+      $extra[$definition->id()][$definition->id()]['display']['warnings'] = [
+        'label' => new TranslatableMarkup('Warnings'),
+        'description' => new TranslatableMarkup('Displays app warnings'),
+        'weight' => -100,
+        'visible' => TRUE,
+      ];
     }
   }
   return $extra;
@@ -358,10 +377,17 @@ function apigee_edge_field_formatter_info_alter(array &$info) {
  */
 function apigee_edge_entity_view(array &$build, EntityInterface $entity, EntityViewDisplayInterface $display, $view_mode) {
   if ($entity instanceof AppInterface) {
-    if ($build['#view_mode'] === 'full') {
-      // Add some required assets to an app's full entity view mode.
-      $build['#attached']['library'][] = 'apigee_edge/apigee_edge.components';
-      $build['#attached']['library'][] = 'apigee_edge/apigee_edge.app_view';
+    // Add some required assets to an app's full entity view mode.
+    $build['#attached']['library'][] = 'apigee_edge/apigee_edge.components';
+    $build['#attached']['library'][] = 'apigee_edge/apigee_edge.app_view';
+
+    if (\Drupal::moduleHandler()->moduleExists('apigee_edge_teams')) {
+      if ($team = \Drupal::routeMatch()->getParameter('team')) {
+        $team_app_name = $team->getName();
+      }
+    }
+    if ($user = \Drupal::routeMatch()->getParameter('user')) {
+      $build['#attached']['drupalSettings']['currentUser'] = $user->id();
     }
 
     if ($display->getComponent('credentials')) {
@@ -375,15 +401,67 @@ function apigee_edge_entity_view(array &$build, EntityInterface $entity, EntityV
       $build['credentials'] = [
         '#type' => 'container',
       ];
+      $index = 0;
       foreach ($entity->getCredentials() as $credential) {
-        $build['credentials'][] = [
+        $build['credentials'][$credential->getStatus()][] = [
           '#type' => 'app_credential',
           '#credential' => $credential,
+          '#app_name' => $entity->getName(),
+          '#team_app_name' => isset($team_app_name) ? $team_app_name : '',
+          '#app' => $entity,
           '#attributes' => [
             'class' => 'items--inline',
+            'data-app' => $entity->getName(),
+            'data-team' => isset($team_app_name) ? $team_app_name : '',
+            'data-app-container-index' => $index,
           ],
         ] + $defaults;
+        $index++;
       }
+
+      // Hide revoked credentials in a collapsible section.
+      if (!empty($build['credentials'][AppCredentialInterface::STATUS_REVOKED])) {
+        $revoked_credentials = $build['credentials'][AppCredentialInterface::STATUS_REVOKED];
+        $build['credentials'][AppCredentialInterface::STATUS_REVOKED] = [
+          '#type' => 'details',
+          '#title' => t('Revoked keys (@count)', ['@count' => count($revoked_credentials)]),
+          '#weight' => 100,
+          'credentials' => $revoked_credentials,
+        ];
+      }
+    }
+
+    // Add link to add keys.
+    if($entity->access('add_api_key') && $entity->hasLinkTemplate('add-api-key-form')) {
+      $build['add_keys'] = Link::fromTextAndUrl(t('Add key'), $entity->toUrl('add-api-key-form', [
+        'attributes' => [
+          'data-dialog-type' => 'modal',
+          'data-dialog-options' => json_encode([
+            'width' => 500,
+            'height' => 250,
+            'draggable' => FALSE,
+            'autoResize' => FALSE,
+          ]),
+          'class' => [
+            'use-ajax',
+            'button',
+          ],
+        ],
+      ]))->toRenderable();
+    }
+  }
+
+  if ($display->getComponent('warnings')) {
+    /** @var \Drupal\apigee_edge\Entity\AppWarningsCheckerInterface $app_warnings_checker */
+    $app_warnings_checker = \Drupal::service('apigee_edge.entity.app_warnings_checker');
+    $warnings = array_filter($app_warnings_checker->getWarnings($entity));
+    if (count($warnings)) {
+      $build['warnings'] = [
+        '#theme' => 'status_messages',
+        '#message_list' => [
+          'warning' => $warnings,
+        ],
+      ];
     }
   }
 }
@@ -446,6 +524,27 @@ function apigee_edge_api_product_access(EntityInterface $entity, $operation, Acc
   // If the API product gets updated it should not have any effect this
   // access control so we did not add $entity as a dependency to the result.
   return $result->cachePerUser()->addCacheTags(['config:' . $config_name]);
+}
+
+/**
+ * Implements hook_entity_access().
+ */
+function apigee_edge_entity_access(EntityInterface $entity, $operation, AccountInterface $account) {
+  if (!$entity->getEntityType()->entityClassImplements(AppInterface::class) || !in_array($operation, ['revoke_api_key', 'delete_api_key'])) {
+    return AccessResult::neutral();
+  }
+
+  /** @var \Drupal\apigee_edge\Entity\AppInterface $entity **/
+
+  $approved_credentials = array_filter($entity->getCredentials(), function (AppCredentialInterface $credential) {
+    return $credential->getStatus() === AppCredentialInterface::STATUS_APPROVED;
+  });
+
+  // Prevent revoking/deleting the only active key.
+  if (count($approved_credentials) <= 1) {
+    $action = $operation === "revoke_api_key" ? "revoke" : "delete";
+    return AccessResult::forbidden("You cannot $action the only active key.");
+  }
 }
 
 /**
@@ -1013,11 +1112,17 @@ function template_preprocess_app_credential_product_list(array &$variables) {
  *     Properties used:
  *     - #credential: A \Apigee\Edge\Api\Management\Entity\AppCredential object.
  *       A developer app credential.
+ *     - #app_name: string.
+ *       App name.
+ *     - #team_app_name: string.
+ *       Team app name.
  *   - attributes: HTML attributes for the containing element.
  */
 function template_preprocess_app_credential(array &$variables) {
   /** @var \Apigee\Edge\Api\Management\Entity\AppCredentialInterface $credential */
   $credential = $variables['elements']['#credential'];
+  /** @var \Drupal\apigee_edge\Entity\AppInterface $app */
+  $app = $variables['elements']['#app'];
   /** @var \Drupal\Core\Datetime\DateFormatterInterface $dateFormatter */
   $dateFormatter = Drupal::service('date.formatter');
   $serializer = new AppCredentialSerializer();
@@ -1055,10 +1160,11 @@ function template_preprocess_app_credential(array &$variables) {
   $variables['primary_wrapper'] = [
     '#type' => 'container',
     '#attributes' => [
-      'class' => 'wrapper--primary',
+      'class' => 'wrapper--primary app-details-wrapper',
     ],
   ];
 
+  $index = 0;
   foreach ($properties_in_primary as $property => $def) {
     $variables['primary_wrapper'][$property] = [
       '#type' => 'container',
@@ -1096,14 +1202,9 @@ function template_preprocess_app_credential(array &$variables) {
     $value = (string) $value;
 
     if (in_array($property, $secret_properties)) {
+      // Render the consumerKey and the consumerSecret as secret fields.
       $variables['primary_wrapper'][$property]['value'] = [
-        '#type' => 'html_tag',
-        '#tag' => 'span',
-        '#attributes' => [
-          'class' => 'secret',
-          'data-secret-type' => $property,
-        ],
-        '#value' => Xss::filter($value),
+        '#type' => 'apigee_secret',
       ];
     }
     elseif ($def['value_type'] === 'status') {
@@ -1122,6 +1223,7 @@ function template_preprocess_app_credential(array &$variables) {
         '#markup' => Xss::filter($value),
       ];
     }
+    $index++;
   }
 
   $variables['secondary_wrapper'] = [
@@ -1142,6 +1244,27 @@ function template_preprocess_app_credential(array &$variables) {
 
   // Helpful $content variable for templates.
   $variables['content'] = $normalized;
+
+  // Add operations.
+  $variables['operations'] = [
+    '#type' => 'operations',
+  ];
+
+  if ($credential->getStatus() === AppCredentialInterface::STATUS_APPROVED && $app->access('revoke_api_key') && $app->hasLinkTemplate('revoke-api-key-form')) {
+    $variables['operations']['#links']['revoke'] = [
+      'title' => t('Revoke'),
+      'url' => $app->toUrl('revoke-api-key-form')
+        ->setRouteParameter('consumer_key', $credential->getConsumerKey()),
+    ];
+  }
+
+  if ($app->access('delete_api_key') && $app->hasLinkTemplate('delete-api-key-form')) {
+    $variables['operations']['#links']['delete'] = [
+      'title' => t('Delete'),
+      'url' => $app->toUrl('delete-api-key-form')
+        ->setRouteParameter('consumer_key', $credential->getConsumerKey()),
+    ];
+  }
 }
 
 /**
@@ -1248,6 +1371,14 @@ function apigee_edge_user_presave(UserInterface $account) {
         else {
           $logger->error("Unable to save @developer developer's developer id on user.", $context);
         }
+      }
+      elseif ($previous->getEdgeErrorCode() === Developer::APIGEE_HYBRID_ERROR_CODE_DEVELOPER_EMAIL_MISMATCH) {
+        // Apigee X and Hybrid runtime v1.5.0 and v1.5.1 a call to change the developer's
+        // email address will not work so need to prevent user email update on
+        // Drupal as well.
+        // @see https://github.com/apigee/apigee-client-php/issues/153
+        // @see https://github.com/apigee/apigee-edge-drupal/issues/587
+        throw new DeveloperUpdateFailedException($account->getEmail(), "Developer @email profile cannot be updated. " . $previous->getMessage());
       }
     }
     else {
@@ -1669,4 +1800,37 @@ function _apigee_edge_is_sync_in_progress(): bool {
 function apigee_edge_cache_flush() {
   // If OAuth token file does not exist this does not do anything.
   \Drupal::service('apigee_edge.authentication.oauth_token_storage')->removeToken();
+}
+
+/**
+ * Gets the title of app listing page.
+ *
+ * @return \Drupal\Core\StringTranslation\TranslatableMarkup
+ *   The title of the page.
+ */
+function apigee_edge_app_listing_page_title(): TranslatableMarkup {
+  $args['@apps'] = \Drupal::entityTypeManager()
+    ->getDefinition('developer_app')->getCollectionLabel();
+  $title = t('@apps', $args);
+  // Modules and themes can alter the title.
+  \Drupal::moduleHandler()->alter('apigee_edge_app_listing_page_title', $title);
+
+  return $title;
+}
+
+/**
+ * Implements hook_preprocess_HOOK().
+ */
+function apigee_edge_preprocess_fieldset(&$variables) {
+
+  // @todo This is a temporary fix for core issue #3174459.
+  if ($variables['required'] == true) {
+    if ($variables['attributes']['required']) {
+      unset($variables['attributes']['required']);
+    }
+
+    if ($variables['attributes']['aria-required']) {
+      unset($variables['attributes']['aria-required']);
+    }
+  }
 }

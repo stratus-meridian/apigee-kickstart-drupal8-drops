@@ -83,11 +83,11 @@ class OrderListBuilder extends EntityListBuilder {
    * {@inheritdoc}
    */
   public function buildRow(EntityInterface $entity) {
-    /* @var $entity \Drupal\commerce_order\Entity\Order */
-    $orderType = OrderType::load($entity->bundle());
+    /** @var \Drupal\commerce_order\Entity\OrderInterface $entity  */
+    $order_type = OrderType::load($entity->bundle());
     $row = [
       'order_id' => $entity->id(),
-      'type' => $orderType->label(),
+      'type' => $order_type->label(),
       'customer' => [
         'data' => [
           '#theme' => 'username',
@@ -108,25 +108,32 @@ class OrderListBuilder extends EntityListBuilder {
     $operations = parent::getDefaultOperations($entity);
 
     /** @var \Drupal\commerce_order\Entity\OrderInterface $entity */
+    if ($entity->access('view')) {
+      $operations['view'] = [
+        'title' => $this->t('View'),
+        'weight' => 5,
+        'url' => $entity->toUrl('canonical'),
+      ];
+    }
     if ($entity->access('update') && $entity->hasLinkTemplate('reassign-form')) {
       $operations['reassign'] = [
         'title' => $this->t('Reassign'),
         'weight' => 20,
-        'url' => $entity->toUrl('reassign-form'),
+        'url' => $this->ensureDestination($entity->toUrl('reassign-form')),
       ];
     }
     if ($entity->access('unlock')) {
       $operations['unlock'] = [
         'title' => $this->t('Unlock'),
         'weight' => 25,
-        'url' => $entity->toUrl('unlock-form'),
+        'url' => $this->ensureDestination($entity->toUrl('unlock-form')),
       ];
     }
     if ($entity->access('resend_receipt')) {
       $operations['resend_receipt'] = [
         'title' => $this->t('Resend receipt'),
         'weight' => 20,
-        'url' => $entity->toUrl('resend-receipt-form'),
+        'url' => $this->ensureDestination($entity->toUrl('resend-receipt-form')),
       ];
     }
 

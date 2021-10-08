@@ -14,10 +14,10 @@ class PaymentRefundForm extends PaymentGatewayFormBase {
     /** @var \Drupal\commerce_payment\Entity\PaymentInterface $payment */
     $payment = $this->entity;
 
-    $form['#success_message'] = t('Payment refunded.');
+    $form['#success_message'] = $this->t('Payment refunded.');
     $form['amount'] = [
       '#type' => 'commerce_price',
-      '#title' => t('Amount'),
+      '#title' => $this->t('Amount'),
       '#default_value' => $payment->getBalance()->toArray(),
       '#required' => TRUE,
       '#available_currencies' => [$payment->getAmount()->getCurrencyCode()],
@@ -36,7 +36,7 @@ class PaymentRefundForm extends PaymentGatewayFormBase {
     $payment = $this->entity;
     $balance = $payment->getBalance();
     if ($amount->greaterThan($balance)) {
-      $form_state->setError($form['amount'], t("Can't refund more than @amount.", ['@amount' => $balance->__toString()]));
+      $form_state->setError($form['amount'], $this->t("Can't refund more than @amount.", ['@amount' => $balance->__toString()]));
     }
   }
 

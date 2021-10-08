@@ -19,7 +19,7 @@ class ProductVariationFieldInjectionTest extends ProductBrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     // Create an attribute, so we can test it displays, too.
@@ -110,6 +110,15 @@ class ProductVariationFieldInjectionTest extends ProductBrowserTestBase {
     $this->assertSession()->pageTextNotContains($this->product->label() . ' - Cyan');
     $this->assertSession()->pageTextContains('INJECTION-CYAN');
     $this->assertSession()->pageTextContains('$999.00');
+  }
+
+  /**
+   * Verifies installing Layout Builder does not break field injection.
+   */
+  public function testInjectedFieldsWithLayoutBuilderInstalled() {
+    $this->container->get('module_installer')->install(['layout_builder']);
+    $this->rebuildContainer();
+    $this->testInjectedVariationDefault();
   }
 
   /**

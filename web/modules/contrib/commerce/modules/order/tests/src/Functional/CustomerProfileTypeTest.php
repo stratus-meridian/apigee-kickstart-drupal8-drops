@@ -38,7 +38,7 @@ class CustomerProfileTypeTest extends OrderBrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     // Work around profile bug #3071142. Remove once 1.0 is required.

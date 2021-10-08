@@ -26,6 +26,9 @@ use Drupal\Core\Entity\EntityPublishedInterface;
 
 /**
  * Provides an interface for defining API Doc entities.
+ *
+ * @deprecated in 2.x and is removed from 3.x. Use the node "apidoc" bundle instead.
+ * @see https://github.com/apigee/apigee-api-catalog-drupal/pull/84
  */
 interface ApiDocInterface extends ContentEntityInterface, EntityChangedInterface, EntityPublishedInterface {
 

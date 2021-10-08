@@ -14,7 +14,7 @@ namespace Drupal\commerce_tax\Plugin\Commerce\TaxNumberType;
  *   countries = {
  *     "EU",
  *     "AT", "BE", "BG", "CY", "CZ", "DE", "DK", "EE", "ES", "FI",
- *     "FR", "GB", "GR", "HR", "HU", "IE", "IM", "IT", "LT", "LU",
+ *     "FR", "GR", "HR", "HU", "IE", "IM", "IT", "LT", "LU",
  *     "LV", "MC", "MT", "NL", "PL", "PT", "RO", "SE", "SI", "SK",
  *   },
  *   examples = {"DE123456789", "HU12345678"}
@@ -156,7 +156,6 @@ class EuropeanUnionVat extends TaxNumberTypeWithVerificationBase {
       'ES' => '[A-Z]\d{7}[A-Z]|\d{8}[A-Z]|[A-Z]\d{8}',
       'FI' => '\d{8}',
       'FR' => '[0-9A-Z]{2}\d{9}',
-      'GB' => '\d{9}|\d{12}|(GD|HA)\d{3}',
       'HR' => '\d{11}',
       'HU' => '\d{8}',
       'IE' => '[A-Z\d]{8}|[A-Z\d]{9}',

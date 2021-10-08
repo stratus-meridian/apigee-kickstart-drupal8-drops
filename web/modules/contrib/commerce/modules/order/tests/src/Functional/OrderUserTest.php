@@ -23,7 +23,7 @@ class OrderUserTest extends OrderBrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  public function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $permissions = [

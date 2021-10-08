@@ -2,16 +2,16 @@
 
 namespace Drupal\commerce_order\Event;
 
+use Drupal\commerce\EventBase;
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\profile\Entity\ProfileInterface;
-use Symfony\Component\EventDispatcher\Event;
 
 /**
  * Defines the order profiles event.
  *
  * @see \Drupal\commerce_order\Event\OrderEvents
  */
-class OrderProfilesEvent extends Event {
+class OrderProfilesEvent extends EventBase {
 
   /**
    * The order.

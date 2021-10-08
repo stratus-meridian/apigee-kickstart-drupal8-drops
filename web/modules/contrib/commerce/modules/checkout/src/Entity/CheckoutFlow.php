@@ -3,6 +3,7 @@
 namespace Drupal\commerce_checkout\Entity;
 
 use Drupal\commerce\CommerceSinglePluginCollection;
+use Drupal\commerce_checkout\Plugin\Commerce\CheckoutFlow\CheckoutFlowWithPanesInterface;
 use Drupal\Core\Config\Entity\ConfigEntityBase;
 
 /**
@@ -150,6 +151,38 @@ class CheckoutFlow extends ConfigEntityBase implements CheckoutFlowInterface {
       $this->pluginCollection = new CommerceSinglePluginCollection($plugin_manager, $this->plugin, $this->configuration, $this);
     }
     return $this->pluginCollection;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function onDependencyRemoval(array $dependencies) {
+    $changed = parent::onDependencyRemoval($dependencies);
+
+    // For checkout flows with panes, ensure panes provided by the module being
+    // uninstalled are removed from the configuration.
+    if (!empty($dependencies['module']) &&
+      $this->getPlugin() instanceof CheckoutFlowWithPanesInterface) {
+      $uninstalled_modules = $dependencies['module'];
+      $panes_to_remove = [];
+      /** @var \Drupal\commerce_checkout\CheckoutPaneManager $pane_manager */
+      $pane_manager = \Drupal::service('plugin.manager.commerce_checkout_pane');
+
+      foreach ($pane_manager->getDefinitions() as $definition) {
+        if (!in_array($definition['provider'], $uninstalled_modules, TRUE)) {
+          continue;
+        }
+        $panes_to_remove[$definition['id']] = $definition['id'];
+      }
+
+      if ($panes_to_remove) {
+        $this->configuration['panes'] = array_diff_key($this->configuration['panes'], $panes_to_remove);
+        $this->getPlugin()->setConfiguration($this->configuration);
+        $changed = TRUE;
+      }
+    }
+
+    return $changed;
   }
 
 }

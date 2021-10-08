@@ -164,6 +164,9 @@ class Importer implements ImporterInterface {
           // Here we need to resolve our dependencies:
           foreach ($decoded['_embedded'] as $embedded) {
             foreach ($embedded as $item) {
+              if (empty($item['uuid'])) {
+                continue;
+              }
               $uuid = $item['uuid'][0]['value'];
               $edge = $this->getVertex($uuid);
               $this->graph[$vertex->id]['edges'][$edge->id] = TRUE;
@@ -185,6 +188,10 @@ class Importer implements ImporterInterface {
           // Ensure that the entity is not owned by the anonymous user.
           if ($entity instanceof EntityOwnerInterface && empty($entity->getOwnerId())) {
             $entity->setOwner($root_user);
+          }
+          // Ensure that the entity does not exist.
+          if ($this->entityTypeManager->getStorage($entity_type_id)->loadByProperties(['uuid' => $entity->uuid()])) {
+            continue;
           }
           $entity->save();
           $created[$entity->uuid()] = $entity;

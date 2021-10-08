@@ -56,7 +56,7 @@ abstract class ProductWebDriverTestBase extends CommerceWebDriverTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->stores = [$this->store];

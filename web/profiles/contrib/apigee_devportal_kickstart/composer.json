@@ -3,30 +3,57 @@
   "description": "A fast demo and starting point for Apigee Developer Portals.",
   "type": "drupal-profile",
   "license": "GPL-2.0-or-later",
+  "repositories": [
+    {
+        "type": "composer",
+        "url": "https://packages.drupal.org/8"
+    },
+    {
+        "type": "composer",
+        "url": "https://asset-packagist.org"
+    }
+  ],
   "require": {
     "cweagans/composer-patches": "^1.6.5",
     "drupal/admin_toolbar": "^2.0",
     "drupal/adminimal_admin_toolbar": "^1.9",
-    "drupal/apigee_api_catalog": "^1.0",
-    "drupal/apigee_edge": "^1.10",
-    "drupal/better_exposed_filters": "^3.0@alpha",
+    "drupal/apigee_api_catalog": "^2.4",
+    "drupal/apigee_edge": "^1.18",
+    "drupal/better_exposed_filters": "^5.0",
     "drupal/default_content": "^1.0@alpha",
     "drupal/email_registration": "^1.0@RC",
     "drupal/fontawesome": "^2.12",
     "drupal/paragraphs": "^1.6",
     "drupal/pathauto": "^1.6",
-    "drupal/radix": "^4.8"
+    "drupal/radix": "^4.8",
+    "drupal/components": "^2.1"
+  },
+  "require-dev": {
+    "drupal/core-dev": "^8.7 || ^9",
+    "drush/drush": "^9.0 || ^10.0",
+    "mglaman/drupal-check": "^1.1",
+    "phpmd/phpmd": "2.8.2",
+    "phpmetrics/phpmetrics": "^2.5",
+    "phpstan/phpstan": "0.12.42"
   },
   "conflict": {
-    "drupal/pathauto": "<1.6"
+    "drupal/pathauto": "<1.6",
+    "drupal/apigee_m10n": "<1.7"
   },
   "config": {
     "sort-packages": true
   },
   "extra": {
     "patches": {
-      "drupal/better_exposed_filters": {
-        "Fix issue with #summary_details introduced in Drupal 8.6.x": "https://www.drupal.org/files/issues/2018-10-05/bef-summary-attributes-3001967-4.patch"
+      "drupal/core": {
+        "Fix issue with #summary_details introduced in Drupal 8.6.x": "https://www.drupal.org/files/issues/2018-12-17/core-undefined-index-summary_attributes-2998194-9.patch",
+        "Fix Validation issue for entity reference field on updating teams #470": "https://www.drupal.org/files/issues/2021-04-23/validate-reference-constraint-3210319-3.patch"
+      },
+      "drupal/default_content": {
+        "Do not import existing entities": "https://www.drupal.org/files/issues/2020-11-06/default_content-existing-entities-2698425-1-x.patch"
+      },
+      "drupal/radix": {
+        "Fix issue to support upgrade of components to 2.x": "https://www.drupal.org/files/issues/2021-01-20/components-API-3193046-09.patch"
       }
     }
   }

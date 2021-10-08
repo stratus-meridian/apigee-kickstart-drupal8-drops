@@ -7,6 +7,15 @@ cart_item_removed:
   label: 'Removed from cart'
   template: '<p><em>{{ purchased_entity_label }}</em> removed from the cart.</p>'
 
+checkout_complete:
+  category: commerce_checkout
+  label: 'Checkout complete'
+  template: '<p>Customer completed checkout for this order.</p>'
+
+order_created_admin:
+  category: commerce_order
+  label: 'Order created'
+  template: '<p>Order created through the order add form.</p>'
 order_placed:
   category: commerce_order
   label: 'Order placed'
@@ -27,3 +36,27 @@ order_assigned:
   category: commerce_order
   label: 'Order assigned'
   template: '<p>The order was assigned to {{ user }}.</p>'
+order_mail:
+  category: commerce_order
+  label: 'Order email'
+  template: '<p>Email "{{ id }}" sent to {{ to_email }}.</p>'
+order_mail_failure:
+  category: commerce_order
+  label: 'Order email'
+  template: '<p>Failed to send "{{ id }}" to {{ to_email }}.</p>'
+order_state_updated:
+  category: commerce_order
+  label: 'Order state updated'
+  template: '<p>Order moved from <em>{{ from_state }}</em> to <em>{{ to_state }}</em> by the <em>{{ transition_label }}</em> transition.</p>'
+mail_order_receipt:
+  category: commerce_order
+  label: 'Order receipt email'
+  template: '<p>Order receipt email sent to {{ to_email }}.</p>'
+mail_order_receipt_failure:
+  category: commerce_order
+  label: 'Order receipt email failure'
+  template: '<p>Order receipt email failed to send to {{ to_email }}.</p>'
+commerce_order_admin_comment:
+  category: commerce_order
+  label: 'Admin comment'
+  template: '<p><strong>Admin comment:</strong><br /> {{ comment }}</p>'

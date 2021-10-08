@@ -72,7 +72,7 @@ class SmartDocsFormatter extends FileFormatterBase implements ContainerFactoryPl
    */
   public function __construct($plugin_id, $plugin_definition, FieldDefinitionInterface $field_definition, array $settings, $label, $view_mode, array $third_party_settings, LoggerChannelFactoryInterface $loggerFactory) {
     parent::__construct($plugin_id, $plugin_definition, $field_definition, $settings, $label, $view_mode, $third_party_settings);
-    $this->loggerFactory = $loggerFactory->get('apigee_api_catalog');;
+    $this->loggerFactory = $loggerFactory->get('apigee_api_catalog');
   }
 
   /**
@@ -131,9 +131,9 @@ class SmartDocsFormatter extends FileFormatterBase implements ContainerFactoryPl
 
     $elements['#attached'] = [
       'library' => [
-        'apigee_api_catalog/apigee_api_catalog.js_yaml',
-        'apigee_api_catalog/apigee_api_catalog.smartdocs_integration',
-        'apigee_api_catalog/apigee_api_catalog.smartdocs'
+        'apigee_api_catalog/js_yaml',
+        'apigee_api_catalog/smartdocs_integration',
+        'apigee_api_catalog/smartdocs'
       ],
     ];
 

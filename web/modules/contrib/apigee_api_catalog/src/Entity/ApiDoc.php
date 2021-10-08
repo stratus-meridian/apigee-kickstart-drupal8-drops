@@ -32,6 +32,9 @@ use Drupal\link\LinkItemInterface;
 /**
  * Defines the API Doc entity.
  *
+ * @deprecated in 2.x and is removed from 3.x. Use the node "apidoc" bundle instead.
+ * @see https://github.com/apigee/apigee-api-catalog-drupal/pull/84
+ *
  * @ContentEntityType(
  *   id = "apidoc",
  *   label = @Translation("API Doc"),
@@ -39,16 +42,8 @@ use Drupal\link\LinkItemInterface;
  *   label_plural = @Translation("API Docs"),
  *   handlers = {
  *     "view_builder" = "Drupal\Core\Entity\EntityViewBuilder",
- *     "list_builder" = "Drupal\apigee_api_catalog\Entity\ListBuilder\ApiDocListBuilder",
  *     "views_data" = "Drupal\views\EntityViewsData",
  *     "translation" = "Drupal\content_translation\ContentTranslationHandler",
- *     "form" = {
- *       "default" = "Drupal\apigee_api_catalog\Entity\Form\ApiDocForm",
- *       "add" = "Drupal\apigee_api_catalog\Entity\Form\ApiDocForm",
- *       "edit" = "Drupal\apigee_api_catalog\Entity\Form\ApiDocForm",
- *       "delete" = "Drupal\apigee_api_catalog\Entity\Form\ApiDocDeleteForm",
- *       "reimport_spec" = "Drupal\apigee_api_catalog\Entity\Form\ApiDocReimportSpecForm",
- *     },
  *     "access" = "Drupal\apigee_api_catalog\Entity\Access\ApiDocAccessControlHandler",
  *     "route_provider" = {
  *       "html" = "Drupal\apigee_api_catalog\Entity\Routing\ApiDocHtmlRouteProvider",
@@ -59,9 +54,10 @@ use Drupal\link\LinkItemInterface;
  *   data_table = "apidoc_field_data",
  *   revision_table = "apidoc_revision",
  *   revision_data_table = "apidoc_field_revision",
- *   show_revision_ui = TRUE,
+ *   show_revision_ui = FALSE,
  *   translatable = TRUE,
  *   admin_permission = "administer apigee api catalog",
+ *   internal = TRUE,
  *   entity_keys = {
  *     "id" = "id",
  *     "label" = "name",
@@ -302,13 +298,15 @@ class ApiDoc extends EditorialContentEntityBase implements ApiDocInterface {
       ->setDisplayConfigurable('form', FALSE)
       ->setDisplayConfigurable('view', FALSE);
 
-    $fields['api_product'] = BaseFieldDefinition::create('entity_reference')
-      ->setLabel(t('API Product'))
-      ->setDescription(t('The API Product this API is associated with.'))
-      ->setRevisionable(TRUE)
-      ->setSetting('target_type', 'api_product')
-      ->setDisplayConfigurable('form', FALSE)
-      ->setDisplayConfigurable('view', FALSE);
+    if (\Drupal::moduleHandler()->moduleExists('apigee_edge')) {
+      $fields['api_product'] = BaseFieldDefinition::create('entity_reference')
+        ->setLabel(t('API Product'))
+        ->setDescription(t('The API Product this API is associated with.'))
+        ->setRevisionable(TRUE)
+        ->setSetting('target_type', 'api_product')
+        ->setDisplayConfigurable('form', FALSE)
+        ->setDisplayConfigurable('view', FALSE);
+    }
 
     $fields['status']
       ->setLabel(t('Publishing status'))

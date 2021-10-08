@@ -160,4 +160,18 @@ class NumberFormatter implements NumberFormatterInterface
             throw new InvalidArgumentException(sprintf('Unrecognized style "%s".', $options['style']));
         }
     }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function getLocalizedSymbols(NumberFormat $numberFormat): array
+    {
+        return [
+            '.' => $numberFormat->getDecimalSeparator(),
+            ',' => $numberFormat->getGroupingSeparator(),
+            '+' => $numberFormat->getPlusSign(),
+            '-' => $numberFormat->getMinusSign(),
+            '%' => $numberFormat->getPercentSign(),
+        ];
+    }
 }

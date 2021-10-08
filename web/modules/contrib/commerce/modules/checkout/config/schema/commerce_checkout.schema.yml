@@ -38,6 +38,9 @@ commerce_checkout_flow_with_panes_configuration:
     display_checkout_progress:
       type: boolean
       label: 'Display checkout progress'
+    display_checkout_progress_breadcrumb_links:
+      type: boolean
+      label: 'Display checkout progress breadcrumb links'
     order_summary_view:
       type: string
       label: 'Order summary view'
@@ -73,6 +76,14 @@ commerce_checkout.commerce_checkout_pane.order_summary:
     view:
       type: string
       label: 'View'
+
+commerce_checkout.commerce_checkout_pane.completion_message:
+  type: commerce_checkout_pane_configuration
+  mapping:
+    message:
+      type: text_format
+      label: 'message'
+      translatable: true
 
 commerce_checkout_pane_configuration:
   type: mapping

@@ -45,7 +45,7 @@ class CouponTest extends CommerceBrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->promotion = $this->createEntity('commerce_promotion', [
@@ -76,7 +76,7 @@ class CouponTest extends CommerceBrowserTestBase {
     $this->getSession()->getPage()->fillField('code[0][value]', $code);
     $this->submitForm([], t('Save'));
     $this->assertSession()->pageTextContains("Saved the $code coupon.");
-    $coupon_count = $this->getSession()->getPage()->findAll('xpath', '//table/tbody/tr/td[text()="' . $code . '"]');
+    $coupon_count = $this->getSession()->getPage()->findAll('xpath', "//table/tbody/tr/td[text()[contains(., '$code')]]");
     $this->assertEquals(count($coupon_count), 1, 'Coupon exists in the table.');
 
     $coupon = Coupon::load(1);
@@ -119,6 +119,7 @@ class CouponTest extends CommerceBrowserTestBase {
       'code' => $this->randomMachineName(8),
       'status' => FALSE,
       'usage_limit' => 0,
+      'usage_limit_customer' => 0,
     ]);
     $this->drupalGet($coupon->toUrl('delete-form'));
     $this->assertSession()->statusCodeEquals(200);
@@ -134,8 +135,8 @@ class CouponTest extends CommerceBrowserTestBase {
    * Tests bulk generation of coupons.
    */
   public function testGenerateCoupons() {
-    // Generate 52 single-use coupons.
-    $coupon_quantity = 52;
+    // Generate 50 single-use coupons (The view shows 50 coupons at once).
+    $coupon_quantity = 50;
     $this->drupalGet('/promotion/' . $this->promotion->id() . '/coupons');
     $this->getSession()->getPage()->clickLink('Generate coupons');
     $this->getSession()->getPage()->selectFieldOption('format', 'numeric');
@@ -144,7 +145,7 @@ class CouponTest extends CommerceBrowserTestBase {
     $this->checkForMetaRefresh();
 
     $this->assertSession()->pageTextContains("Generated $coupon_quantity coupons.");
-    $coupon_count = $this->getSession()->getPage()->findAll('xpath', '//table/tbody/tr/td[text()="0 / 1"]');
+    $coupon_count = $this->getSession()->getPage()->findAll('xpath', '//table/tbody/tr/td[text()[contains(., "0 / 1")]]');
     $this->assertEquals(count($coupon_count), $coupon_quantity);
 
     $coupons = Coupon::loadMultiple();
@@ -172,7 +173,7 @@ class CouponTest extends CommerceBrowserTestBase {
     $this->checkForMetaRefresh();
 
     $this->assertSession()->pageTextContains("Generated $coupon_quantity coupons.");
-    $coupon_count = $this->getSession()->getPage()->findAll('xpath', '//table/tbody/tr/td[text()="0 / Unlimited"]');
+    $coupon_count = $this->getSession()->getPage()->findAll('xpath', '//table/tbody/tr/td[text()[contains(., "0 / Unlimited")]]');
     $this->assertEquals(count($coupon_count), $coupon_quantity);
   }
 

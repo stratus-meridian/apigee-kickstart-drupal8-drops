@@ -7,6 +7,7 @@ use Drupal\commerce_order\Entity\OrderItem;
 use Drupal\commerce_price\Price;
 use Drupal\commerce_promotion\Entity\Coupon;
 use Drupal\commerce_promotion\Entity\Promotion;
+use Drupal\language\Entity\ConfigurableLanguage;
 use Drupal\Tests\commerce_order\Kernel\OrderKernelTestBase;
 
 /**
@@ -30,24 +31,27 @@ class PromotionOrderProcessorTest extends OrderKernelTestBase {
    */
   public static $modules = [
     'commerce_promotion',
+    'language',
+    'content_translation',
   ];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->installEntitySchema('commerce_promotion');
     $this->installEntitySchema('commerce_promotion_coupon');
     $this->installConfig(['commerce_promotion']);
     $this->installSchema('commerce_promotion', ['commerce_promotion_usage']);
+    ConfigurableLanguage::createFromLangcode('fr')->save();
 
     $this->user = $this->createUser();
 
     $this->order = Order::create([
       'type' => 'default',
-      'state' => 'draft',
+      'state' => 'completed',
       'mail' => 'test@example.com',
       'ip_address' => '127.0.0.1',
       'order_number' => '6',
@@ -123,6 +127,7 @@ class PromotionOrderProcessorTest extends OrderKernelTestBase {
     ]);
     $order_item->save();
     $this->order->addItem($order_item);
+    $this->order->set('state', 'draft');
     $this->order->save();
 
     // Starts now, enabled. No end time.
@@ -250,6 +255,95 @@ class PromotionOrderProcessorTest extends OrderKernelTestBase {
 
     $this->container->get('commerce_order.order_refresh')->refresh($order);
     $this->assertCount(0, $order->get('coupons')->getValue());
+  }
+
+  /**
+   * Tests that promotion adjustments are correctly translated.
+   */
+  public function testAdjustmentsTranslation() {
+    // Use addOrderItem so the total is calculated.
+    $order_item = OrderItem::create([
+      'type' => 'test',
+      'quantity' => 2,
+      'unit_price' => [
+        'number' => '20.00',
+        'currency_code' => 'USD',
+      ],
+    ]);
+    $order_item->save();
+    $this->order->setRefreshState(Order::REFRESH_SKIP);
+    $this->order->addItem($order_item);
+    $this->order->save();
+
+    // Starts now, enabled. No end time.
+    $promotion = Promotion::create([
+      'name' => 'Promotion 1',
+      'display_name' => 'Promotion EN',
+      'order_types' => [$this->order->bundle()],
+      'stores' => [$this->store->id()],
+      'status' => TRUE,
+      'offer' => [
+        'target_plugin_id' => 'order_percentage_off',
+        'target_plugin_configuration' => [
+          'percentage' => '0.10',
+        ],
+      ],
+    ]);
+    $promotion->save();
+    $this->assertTrue($promotion->applies($this->order));
+    $this->container->get('commerce_order.order_refresh')->refresh($this->order);
+
+    $adjustments = $this->order->collectAdjustments();
+    $this->assertEquals(1, count($adjustments));
+    $this->assertEquals('Promotion EN', $adjustments[0]->getLabel());
+
+    $this->container->get('content_translation.manager')
+      ->setEnabled('commerce_promotion', 'default', TRUE);
+    $this->changeActiveLanguage('fr');
+    $promotion->addTranslation('fr', [
+      'display_name' => 'Promotion FR',
+    ]);
+    $promotion->save();
+    $this->container->get('commerce_order.order_refresh')->refresh($this->order);
+    $adjustments = $this->order->collectAdjustments();
+    $this->assertEquals(1, count($adjustments));
+    $this->assertEquals('Promotion FR', $adjustments[0]->getLabel());
+
+    // Test that a promotion with coupons is correctly translated as well.
+    $coupon = Coupon::create([
+      'code' => $this->randomString(),
+      'promotion_id' => $promotion->id(),
+      'status' => TRUE,
+    ]);
+    $coupon->save();
+
+    $this->container->get('commerce_order.order_refresh')->refresh($this->order);
+    $this->assertEquals(0, count($this->order->collectAdjustments()));
+
+    $this->order->get('coupons')->appendItem($coupon);
+    $this->order->save();
+    $this->container->get('commerce_order.order_refresh')->refresh($this->order);
+    $adjustments = $this->order->collectAdjustments();
+    $this->assertEquals(1, count($adjustments));
+    $this->assertEquals('Promotion FR', $adjustments[0]->getLabel());
+
+    $this->changeActiveLanguage('en');
+    $this->container->get('commerce_order.order_refresh')->refresh($this->order);
+    $adjustments = $this->order->collectAdjustments();
+    $this->assertEquals(1, count($adjustments));
+    $this->assertEquals('Promotion EN', $adjustments[0]->getLabel());
+  }
+
+  /**
+   * Changes the active language for translations.
+   *
+   * @param string $langcode
+   *   The langcode.
+   */
+  protected function changeActiveLanguage($langcode) {
+    $language = ConfigurableLanguage::createFromLangcode($langcode);
+    $this->container->get('language.default')->set($language);
+    \Drupal::languageManager()->reset();
   }
 
 }

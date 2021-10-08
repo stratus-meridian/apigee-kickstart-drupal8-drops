@@ -2,14 +2,18 @@
 
 namespace Drupal\file_link\Plugin\Field\FieldType;
 
+use Drupal\Core\Entity\RevisionableInterface;
 use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Field\FieldStorageDefinitionInterface;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Queue\QueueInterface;
 use Drupal\Core\Site\Settings;
 use Drupal\Core\TypedData\DataDefinition;
 use Drupal\Core\Url;
 use Drupal\file\Plugin\Field\FieldType\FileItem;
 use Drupal\file_link\FileLinkInterface;
+use Drupal\file_link\FileLinkQueueItem;
+use Drupal\file_link\Plugin\QueueWorker\FileLinkMetadataUpdate;
 use Drupal\link\Plugin\Field\FieldType\LinkItem;
 use GuzzleHttp\Exception\RequestException;
 use Psr\Http\Message\ResponseInterface;
@@ -66,12 +70,34 @@ class FileLinkItem extends LinkItem implements FileLinkInterface {
   protected $httpClient;
 
   /**
+   * The queue to use when deferring the request to get the metadata.
+   *
+   * @var \Drupal\Core\Queue\QueueInterface
+   */
+  protected $queue;
+
+  /**
+   * Save the needs parsing state as a property.
+   *
+   * @var bool
+   */
+  protected $needsParsing = FALSE;
+
+  /**
+   * Keep the already queued entities in a static cache.
+   *
+   * @var array
+   */
+  protected static $queued = [];
+
+  /**
    * {@inheritdoc}
    */
   public static function defaultFieldSettings() {
     return [
       'file_extensions' => 'txt',
       'no_extension' => FALSE,
+      'deferred_request' => FALSE,
     ] + parent::defaultFieldSettings();
   }
 
@@ -129,6 +155,12 @@ class FileLinkItem extends LinkItem implements FileLinkInterface {
       '#description' => $this->t('The link can refer a document such as a wiki page or a dynamic generated page that has no extension. Check this if you want to allow such URLs.'),
       '#default_value' => $this->getSetting('no_extension'),
     ];
+    $element['deferred_request'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Defer requests to cron'),
+      '#description' => $this->t('The link will not be checked and validated immediately, instead the entity will be updated by cron and the size and format will be determined at that time. Check the logs for errors'),
+      '#default_value' => $this->getSetting('deferred_request'),
+    ];
 
     return $element;
   }
@@ -159,17 +191,35 @@ class FileLinkItem extends LinkItem implements FileLinkInterface {
     /** @var \Drupal\Core\Entity\ContentEntityInterface $original */
     $original = $entity->isNew() ? NULL : $storage->loadUnchanged($entity->id());
     $field_name = $this->getFieldDefinition()->getName();
-    $original_uri = $original ? $original->{$field_name}->uri : NULL;
-    $size = $original ? $original->{$field_name}->size : NULL;
-    $format = $original ? $original->{$field_name}->format : NULL;
+
+    $original_uri = NULL;
+    $size = NULL;
+    $format = NULL;
+    if ($original !== NULL) {
+      $item = $original->get($field_name)->get($this->getName());
+      if ($item != NULL) {
+        $values = $item->getValue();
+        $original_uri = $values['uri'];
+        $size = $values['size'];
+        $format = $values['format'];
+      }
+    }
 
     // We parse the metadata in any of the next cases:
     // - The host entity is new.
     // - The 'file_link' URI has changed.
     // - Stored metadata is empty, possible due to an previous failure. We try
     //   again to parse, hoping the connection was fixed in the meantime.
-    $needs_parsing = $entity->isNew() || ($this->uri !== $original_uri) || empty($size) || empty($format);
-    if ($needs_parsing) {
+    $this->needsParsing = $entity->isNew() || ($this->uri !== $original_uri) || empty($size) || empty($format);
+    if ($this->needsParsing) {
+      if ($this->needsQueue()) {
+        // We set the needs_parsing property and check it in ::postSave.
+        // Now just reset the values, cron will set them later.
+        $this->writePropertyValue('size', NULL);
+        $this->writePropertyValue('format', NULL);
+        return;
+      }
+
       // Don't throw exceptions on HTTP level errors (e.g. 404, 403, etc).
       $options = [
         'exceptions' => FALSE,
@@ -218,6 +268,27 @@ class FileLinkItem extends LinkItem implements FileLinkInterface {
         $this->writePropertyValue('format', $format);
       }
     }
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function postSave($update) {
+    if ($this->needsParsing && $this->needsQueue()) {
+      // We need to queue the entity update in postSave because we need to
+      // know the entity id so that we can load it in cron and re-save it.
+      $entity = $this->getEntity();
+      $rev = ($entity instanceof RevisionableInterface) ? $entity->getRevisionId() : NULL;
+      $item = new FileLinkQueueItem($entity->getEntityTypeId(), $entity->id(), $entity->language()->getId(), $rev);
+      if (!in_array($item->getKey(), static::$queued)) {
+        $this->getQueue()->createItem($item);
+        // Save the queued entity in a static cache so that we don't queue it
+        // more than once when using a multi-value field.
+        static::$queued[] = $item->getKey();
+      }
+    }
+
+    return parent::postSave($update);
   }
 
   /**
@@ -304,6 +375,30 @@ class FileLinkItem extends LinkItem implements FileLinkInterface {
       $this->httpClient = \Drupal::httpClient();
     }
     return $this->httpClient;
+  }
+
+  /**
+   * Returns the queue.
+   *
+   * @return \Drupal\Core\Queue\QueueInterface
+   *   The queue for deferred entity updates.
+   */
+  protected function getQueue(): QueueInterface {
+    if (!isset($this->queue)) {
+      $this->queue = \Drupal::queue('file_link_metadata_update');
+      $this->queue->createQueue();
+    }
+    return $this->queue;
+  }
+
+  /**
+   * Check to see if a queue is needed.
+   *
+   * @return bool
+   *   True if the field is set up to defer requests and cron is not processing.
+   */
+  protected function needsQueue(): bool {
+    return !FileLinkMetadataUpdate::isProcessing() && $this->getFieldDefinition()->getSetting('deferred_request');
   }
 
   /**

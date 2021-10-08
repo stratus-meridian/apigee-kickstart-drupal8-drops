@@ -47,7 +47,7 @@ class AddToCartFieldReplacementTest extends CartWebDriverTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     // Use the title widget so that we do not need to use attributes.

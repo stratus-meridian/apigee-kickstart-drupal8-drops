@@ -134,7 +134,7 @@ abstract class SequentialNumberPatternBase extends NumberPatternBase implements 
         ],
       ],
     ];
-    $entity_type_id = $form_state->getValue('targetEntityType');
+    $entity_type_id = $form_state->get('target_entity_type');
     if (!empty($entity_type_id)) {
       $entity_type = $this->entityTypeManager->getDefinition($entity_type_id);
       if ($entity_type->entityClassImplements(EntityStoreInterface::class)) {
@@ -212,7 +212,9 @@ abstract class SequentialNumberPatternBase extends NumberPatternBase implements 
     $query->fields('cnps', ['store_id', 'number', 'generated']);
     $query
       ->condition('entity_id', $this->parentEntity->id())
-      ->condition('store_id', $this->getStoreId($entity));
+      ->condition('store_id', $this->getStoreId($entity))
+      ->forUpdate();
+
     $result = $query->execute()->fetchAssoc();
     if (empty($result)) {
       return NULL;
@@ -229,36 +231,47 @@ abstract class SequentialNumberPatternBase extends NumberPatternBase implements 
    * {@inheritdoc}
    */
   public function getNextSequence(ContentEntityInterface $entity) {
-    $lock_name = 'commerce_number_pattern.plugin.' . $this->parentEntity->id();
-    while (!$this->lock->acquire($lock_name)) {
-      $this->lock->wait($lock_name);
+    $transaction = $this->connection->startTransaction();
+
+    try {
+      $store_id = $this->getStoreId($entity);
+      // Get the current sequence with FOR UPDATE to ensure we acquire a row
+      // level lock. If a competing process for a different order attempts to
+      // get the current sequence while we're in this function, it will block
+      // in the getCurrentSequence query execute until our transaction
+      // completes.
+      $current_sequence = $this->getCurrentSequence($entity);
+      if (!$current_sequence || $this->shouldReset($current_sequence)) {
+        $sequence = $this->getInitialSequence($entity);
+      }
+      else {
+        $sequence = new Sequence([
+          'number' => $current_sequence->getNumber() + 1,
+          'generated' => $this->time->getRequestTime(),
+          'store_id' => $store_id,
+        ]);
+      }
+      $this->connection->merge('commerce_number_pattern_sequence')
+        ->fields([
+          'entity_id' => $this->parentEntity->id(),
+          'store_id' => $store_id,
+          'number' => $sequence->getNumber(),
+          'generated' => $sequence->getGeneratedTime(),
+        ])
+        ->keys([
+          'entity_id' => $this->parentEntity->id(),
+          'store_id' => $store_id,
+        ])
+        ->execute();
+    }
+    catch (\Exception $e) {
+      $transaction->rollBack();
+      throw $e;
     }
 
-    $store_id = $this->getStoreId($entity);
-    $current_sequence = $this->getCurrentSequence($entity);
-    if (!$current_sequence || $this->shouldReset($current_sequence)) {
-      $sequence = $this->getInitialSequence($entity);
-    }
-    else {
-      $sequence = new Sequence([
-        'number' => $current_sequence->getNumber() + 1,
-        'generated' => $this->time->getRequestTime(),
-        'store_id' => $store_id,
-      ]);
-    }
-    $this->connection->merge('commerce_number_pattern_sequence')
-      ->fields([
-        'entity_id' => $this->parentEntity->id(),
-        'store_id' => $store_id,
-        'number' => $sequence->getNumber(),
-        'generated' => $sequence->getGeneratedTime(),
-      ])
-      ->keys([
-        'entity_id' => $this->parentEntity->id(),
-        'store_id' => $store_id,
-      ])
-      ->execute();
-    $this->lock->release($lock_name);
+    // Commit the transaction to complete the update and allow any blocked
+    // competing process to continue safely.
+    unset($transaction);
 
     return $sequence;
   }

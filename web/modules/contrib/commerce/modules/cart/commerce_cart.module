@@ -288,6 +288,7 @@ function commerce_cart_form_commerce_order_type_form_alter(array &$form, FormSta
     '#title_display' => 'invisible',
     '#default_value' => !empty($cart_expiration['unit']) ? $cart_expiration['unit'] : 'day',
     '#options' => [
+      'minute' => t('Minute'),
       'hour' => t('Hour'),
       'day' => t('Day'),
       'month' => t('Month'),

@@ -1,11 +1,18 @@
+sudo: false
 language: php
 
 php:
+  - 7.4
   - 7.3
   - 7.2
   - 7.1
-  - 7.0
 
 install:
   - composer self-update
   - composer install
+
+script:
+  - XDEBUG_MODE=coverage ./vendor/bin/phpunit -c ./phpunit.xml --coverage-text
+
+matrix:
+  fast_finish: true

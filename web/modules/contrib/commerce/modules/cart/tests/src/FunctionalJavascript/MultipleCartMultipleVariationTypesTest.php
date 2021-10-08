@@ -6,7 +6,6 @@ use Drupal\commerce_order\Entity\Order;
 use Drupal\commerce_product\Entity\ProductAttribute;
 use Drupal\commerce_product\Entity\ProductType;
 use Drupal\commerce_product\Entity\ProductVariationType;
-use Drupal\views\Entity\View;
 
 /**
  * Tests multiple cart page with different variation types.
@@ -41,7 +40,7 @@ class MultipleCartMultipleVariationTypesTest extends CartWebDriverTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
     // Unpublish parent test product.
     $this->variation->getProduct()->setUnpublished();
@@ -78,18 +77,6 @@ class MultipleCartMultipleVariationTypesTest extends CartWebDriverTestBase {
     foreach ($options as $key => $value) {
       $this->sizeAttributes[$key] = $this->createAttributeValue($size_attribute->id(), $value);
     }
-
-    // The error seems to occur when the variation with one attribute is first.
-    // So replace the title sort with a product_id one. Otherwise if the first
-    // product has both attributes, all seems to be fine.
-    $view = View::load('test_multiple_cart_forms');
-    $display =& $view->getDisplay('default');
-    $display['display_options']['sorts']['product_id'] = $display['display_options']['sorts']['title'];
-    $display['display_options']['sorts']['product_id']['id'] = 'product_id';
-    $display['display_options']['sorts']['product_id']['field'] = 'product_id';
-    $display['display_options']['sorts']['product_id']['entity_field'] = 'product_id';
-    unset($display['display_options']['sorts']['title']);
-    $view->save();
 
     // Create products.
     $product_matrix = [

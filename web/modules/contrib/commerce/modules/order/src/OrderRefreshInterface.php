@@ -10,6 +10,14 @@ use Drupal\commerce_order\Entity\OrderInterface;
 interface OrderRefreshInterface {
 
   /**
+   * Adds an order preprocessor.
+   *
+   * @param \Drupal\commerce_order\OrderPreprocessorInterface $processor
+   *   The order preprocessor.
+   */
+  public function addPreprocessor(OrderPreprocessorInterface $processor);
+
+  /**
    * Adds an order processor.
    *
    * @param \Drupal\commerce_order\OrderProcessorInterface $processor

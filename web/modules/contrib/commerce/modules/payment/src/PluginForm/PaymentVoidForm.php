@@ -15,12 +15,12 @@ class PaymentVoidForm extends PaymentGatewayFormBase {
 
     $form['#theme'] = 'confirm_form';
     $form['#attributes']['class'][] = 'confirmation';
-    $form['#page_title'] = t('Are you sure you want to void the %label payment?', [
+    $form['#page_title'] = $this->t('Are you sure you want to void the %label payment?', [
       '%label' => $payment->label(),
     ]);
-    $form['#success_message'] = t('Payment voided.');
+    $form['#success_message'] = $this->t('Payment voided.');
     $form['description'] = [
-      '#markup' => t('This action cannot be undone.'),
+      '#markup' => $this->t('This action cannot be undone.'),
     ];
 
     return $form;

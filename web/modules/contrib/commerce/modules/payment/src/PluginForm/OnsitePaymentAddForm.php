@@ -23,17 +23,17 @@ class OnsitePaymentAddForm extends PaymentGatewayFormBase {
 
     $form['amount'] = [
       '#type' => 'commerce_price',
-      '#title' => t('Amount'),
+      '#title' => $this->t('Amount'),
       '#default_value' => $amount->toArray(),
       '#required' => TRUE,
     ];
     $form['transaction_type'] = [
       '#type' => 'radios',
-      '#title' => t('Transaction type'),
+      '#title' => $this->t('Transaction type'),
       '#title_display' => 'invisible',
       '#options' => [
-        'authorize' => t('Authorize only'),
-        'capture' => t('Authorize and capture'),
+        'authorize' => $this->t('Authorize only'),
+        'capture' => $this->t('Authorize and capture'),
       ],
       '#default_value' => 'capture',
       '#access' => $this->plugin instanceof SupportsAuthorizationsInterface,

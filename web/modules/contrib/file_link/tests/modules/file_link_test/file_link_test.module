@@ -1,0 +1,44 @@
+<?php
+
+use Drupal\Core\Entity\EntityInterface;
+
+/**
+ * Get the count of how many times an entity was saved.
+ *
+ * @param \Drupal\Core\Entity\EntityInterface $entity
+ *   The entity.
+ *
+ * @return int
+ *   The count.
+ */
+function file_link_test_entity_save_counter(EntityInterface $entity) {
+  global $entity_save_counter;
+
+  $key = $entity->getEntityTypeId() . $entity->id();
+  if (!isset($entity_save_counter[$key])) {
+    $entity_save_counter[$key] = 0;
+  }
+
+  return $entity_save_counter[$key];
+}
+
+/**
+ * Implements hook_entity_insert().
+ */
+function file_link_test_entity_insert(EntityInterface $entity) {
+  global $entity_save_counter;
+
+  $key = $entity->getEntityTypeId() . $entity->id();
+  if (!isset($entity_save_counter[$key])) {
+    $entity_save_counter[$key] = 0;
+  }
+
+  $entity_save_counter[$key]++;
+}
+
+/**
+ * Implements hook_entity_update().
+ */
+function file_link_test_entity_update(EntityInterface $entity) {
+  file_link_test_entity_insert($entity);
+}

@@ -39,12 +39,13 @@ class EuropeanUnionVatTest extends OrderKernelTestBase {
    */
   public static $modules = [
     'commerce_tax',
+    'commerce_tax_test',
   ];
 
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
 
     $this->installConfig('commerce_tax');
@@ -116,6 +117,13 @@ class EuropeanUnionVatTest extends OrderKernelTestBase {
     $this->assertCount(1, $adjustments);
     $this->assertEquals('european_union_vat|fr|standard', $adjustment->getSourceId());
 
+    // GB customer, French store, no VAT.
+    $order = $this->buildOrder('GB', 'FR');
+    $this->assertTrue($plugin->applies($order));
+    $plugin->apply($order);
+    $adjustments = $order->collectAdjustments();
+    $this->assertCount(0, $adjustments);
+
     // German customer, French store registered for German VAT, physical product.
     $order = $this->buildOrder('DE', 'FR', '', ['DE']);
     $this->assertTrue($plugin->applies($order));
@@ -172,6 +180,28 @@ class EuropeanUnionVatTest extends OrderKernelTestBase {
     // French customer, Serbian store, physical product.
     $order = $this->buildOrder('FR', 'RS');
     $this->assertFalse($plugin->applies($order));
+  }
+
+  /**
+   * @covers ::getZones
+   */
+  public function testGetZones() {
+    /** @var \Drupal\commerce_tax\Plugin\Commerce\TaxType\LocalTaxTypeInterface $plugin */
+    $plugin = $this->taxType->getPlugin();
+    $zones = $plugin->getZones();
+    $this->assertArrayHasKey('be', $zones);
+    $this->assertArrayHasKey('es', $zones);
+    $this->assertArrayHasKey('fr', $zones);
+    $this->assertArrayHasKey('it', $zones);
+    $this->assertArrayHasKey('de', $zones);
+    $germany_tax_rates = $zones['de']->getRates();
+    $standard_rate = $germany_tax_rates['standard']->toArray();
+    // Ensure the "fake" tax rate percentage added by our test subscriber is present.
+    $fake_percentage = end($standard_rate['percentages']);
+    $this->assertEquals([
+      'number' => '0.25',
+      'start_date' => '2041-01-01',
+    ], $fake_percentage);
   }
 
   /**

@@ -15,27 +15,25 @@ class TaxRatePercentageTest extends CommerceKernelTestBase {
 
   /**
    * @covers ::__construct
-   *
-   * @expectedException \InvalidArgumentException
    */
   public function testMissingProperty() {
+    $this->expectException(\InvalidArgumentException::class);
     $definition = [
       'number' => '0.23',
     ];
-    $percentage = new TaxRatePercentage($definition);
+    new TaxRatePercentage($definition);
   }
 
   /**
    * @covers ::__construct
-   *
-   * @expectedException \InvalidArgumentException
    */
   public function testInvalidNumber() {
+    $this->expectException(\InvalidArgumentException::class);
     $definition = [
       'number' => 'INVALID',
       'start_date' => '2012-01-01',
     ];
-    $percentage = new TaxRatePercentage($definition);
+    new TaxRatePercentage($definition);
   }
 
   /**
@@ -43,6 +41,7 @@ class TaxRatePercentageTest extends CommerceKernelTestBase {
    * @covers ::getNumber
    * @covers ::getStartDate
    * @covers ::getEndDate
+   * @covers ::toArray
    */
   public function testValid() {
     // Can't use a unit test because DrupalDateTime objects use \Drupal.
@@ -59,6 +58,7 @@ class TaxRatePercentageTest extends CommerceKernelTestBase {
     $definition['end_date'] = '2012-12-31';
     $percentage = new TaxRatePercentage($definition);
     $this->assertEquals(new DrupalDateTime($definition['end_date'], 'UTC'), $percentage->getEndDate());
+    $this->assertEquals($definition, $percentage->toArray());
   }
 
   /**

@@ -241,6 +241,7 @@ function template_preprocess_fieldset(&$variables) {
 function template_preprocess_details(&$variables) {
   $element = $variables['element'];
   $variables['attributes'] = $element['#attributes'];
+  $element += ['#summary_attributes' => []];
   $variables['summary_attributes'] = new Attribute($element['#summary_attributes']);
   if (!empty($element['#title'])) {
     $variables['summary_attributes']['role'] = 'button';

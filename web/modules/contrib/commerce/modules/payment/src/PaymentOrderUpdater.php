@@ -80,6 +80,12 @@ class PaymentOrderUpdater implements PaymentOrderUpdaterInterface, DestructableI
     foreach ($payments as $payment) {
       if ($payment->isCompleted()) {
         $new_total = $new_total->add($payment->getBalance());
+        // Sync payment_gateway and payment_method fields from the first
+        // payment if the payment_method field is empty.
+        if ($order->get('payment_method')->isEmpty() && !$payment->get('payment_method')->isEmpty()) {
+          $order->set('payment_gateway', $payment->getPaymentGateway());
+          $order->set('payment_method', $payment->getPaymentMethod());
+        }
       }
     }
 

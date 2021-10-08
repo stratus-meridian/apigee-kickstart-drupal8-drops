@@ -5,8 +5,9 @@ services:
 
   commerce_promotion.promotion_order_processor:
     class: Drupal\commerce_promotion\PromotionOrderProcessor
-    arguments: ['@entity_type.manager']
+    arguments: ['@entity_type.manager', '@language_manager']
     tags:
+      - { name: commerce_order.order_preprocessor, priority: 100}
       - { name: commerce_order.order_processor, priority: 100, adjustment_type: promotion }
 
   commerce_promotion.usage:
@@ -29,3 +30,8 @@ services:
   commerce_promotion.coupon_code_generator:
     class: Drupal\commerce_promotion\CouponCodeGenerator
     arguments: ['@database']
+
+  commerce_promotion.route_subscriber:
+    class: Drupal\commerce_promotion\EventSubscriber\RouteSubscriber
+    tags:
+      - { name: event_subscriber }

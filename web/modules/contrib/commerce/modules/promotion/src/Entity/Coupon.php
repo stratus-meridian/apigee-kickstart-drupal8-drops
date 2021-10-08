@@ -2,10 +2,11 @@
 
 namespace Drupal\commerce_promotion\Entity;
 
+use Drupal\commerce\Entity\CommerceContentEntityBase;
 use Drupal\commerce_order\Entity\OrderInterface;
+use Drupal\Core\Entity\EntityChangedTrait;
 use Drupal\Core\Entity\EntityStorageInterface;
 use Drupal\Core\Field\BaseFieldDefinition;
-use Drupal\Core\Entity\ContentEntityBase;
 use Drupal\Core\Entity\EntityTypeInterface;
 
 /**
@@ -24,6 +25,7 @@ use Drupal\Core\Entity\EntityTypeInterface;
  *     "event" = "Drupal\commerce_promotion\Event\CouponEvent",
  *     "list_builder" = "Drupal\commerce_promotion\CouponListBuilder",
  *     "storage" = "Drupal\commerce_promotion\CouponStorage",
+ *     "storage_schema" = "Drupal\commerce\CommerceContentEntityStorageSchema",
  *     "access" = "Drupal\commerce_promotion\CouponAccessControlHandler",
  *     "views_data" = "Drupal\commerce\CommerceEntityViewsData",
  *     "form" = {
@@ -40,6 +42,9 @@ use Drupal\Core\Entity\EntityTypeInterface;
  *   },
  *   base_table = "commerce_promotion_coupon",
  *   admin_permission = "administer commerce_promotion",
+ *   field_indexes = {
+ *     "code"
+ *   },
  *   entity_keys = {
  *     "id" = "id",
  *     "label" = "code",
@@ -54,7 +59,9 @@ use Drupal\Core\Entity\EntityTypeInterface;
  *   },
  * )
  */
-class Coupon extends ContentEntityBase implements CouponInterface {
+class Coupon extends CommerceContentEntityBase implements CouponInterface {
+
+  use EntityChangedTrait;
 
   /**
    * {@inheritdoc}
@@ -69,7 +76,7 @@ class Coupon extends ContentEntityBase implements CouponInterface {
    * {@inheritdoc}
    */
   public function getPromotion() {
-    return $this->get('promotion_id')->entity;
+    return $this->getTranslatedReferencedEntity('promotion_id');
   }
 
   /**
@@ -97,6 +104,21 @@ class Coupon extends ContentEntityBase implements CouponInterface {
   /**
    * {@inheritdoc}
    */
+  public function getCreatedTime() {
+    return $this->get('created')->value;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setCreatedTime($timestamp) {
+    $this->set('created', $timestamp);
+    return $this;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public function getUsageLimit() {
     return $this->get('usage_limit')->value;
   }
@@ -106,6 +128,21 @@ class Coupon extends ContentEntityBase implements CouponInterface {
    */
   public function setUsageLimit($usage_limit) {
     $this->set('usage_limit', $usage_limit);
+    return $this;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getCustomerUsageLimit() {
+    return $this->get('usage_limit_customer')->value;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setCustomerUsageLimit($usage_limit_customer) {
+    $this->set('usage_limit_customer', $usage_limit_customer);
     return $this;
   }
 
@@ -134,10 +171,25 @@ class Coupon extends ContentEntityBase implements CouponInterface {
     if (!$this->getPromotion()->available($order)) {
       return FALSE;
     }
-    if ($usage_limit = $this->getUsageLimit()) {
-      /** @var \Drupal\commerce_promotion\PromotionUsageInterface $usage */
-      $usage = \Drupal::service('commerce_promotion.usage');
-      if ($usage_limit <= $usage->loadByCoupon($this)) {
+
+    $usage_limit = $this->getUsageLimit();
+    $usage_limit_customer = $this->getCustomerUsageLimit();
+    // If there are no usage limits, the coupon is available.
+    if (!$usage_limit && !$usage_limit_customer) {
+      return TRUE;
+    }
+    /** @var \Drupal\commerce_promotion\PromotionUsageInterface $usage */
+    $usage = \Drupal::service('commerce_promotion.usage');
+
+    // Check the global usage limit fist.
+    if ($usage_limit && $usage_limit <= $usage->loadByCoupon($this)) {
+      return FALSE;
+    }
+
+    // Only check customer usage when email address is known.
+    if ($usage_limit_customer) {
+      $email = $order->getEmail();
+      if ($email && $usage_limit_customer <= $usage->loadByCoupon($this, $email)) {
         return FALSE;
       }
     }
@@ -216,9 +268,27 @@ class Coupon extends ContentEntityBase implements CouponInterface {
       ->setDisplayConfigurable('form', TRUE)
       ->setDisplayConfigurable('view', TRUE);
 
+    $fields['created'] = BaseFieldDefinition::create('created')
+      ->setLabel(t('Created'))
+      ->setDescription(t('The time when the coupon was created.'));
+
+    $fields['changed'] = BaseFieldDefinition::create('changed')
+      ->setLabel(t('Changed'))
+      ->setDescription(t('The time when the coupon was last edited.'))
+      ->setDisplayConfigurable('view', TRUE);
+
     $fields['usage_limit'] = BaseFieldDefinition::create('integer')
       ->setLabel(t('Usage limit'))
       ->setDescription(t('The maximum number of times the coupon can be used. 0 for unlimited.'))
+      ->setDefaultValue(0)
+      ->setDisplayOptions('form', [
+        'type' => 'commerce_usage_limit',
+        'weight' => 4,
+      ]);
+
+    $fields['usage_limit_customer'] = BaseFieldDefinition::create('integer')
+      ->setLabel(t('Customer usage limit'))
+      ->setDescription(t('The maximum number of times the coupon can be used by a customer. 0 for unlimited.'))
       ->setDefaultValue(0)
       ->setDisplayOptions('form', [
         'type' => 'commerce_usage_limit',

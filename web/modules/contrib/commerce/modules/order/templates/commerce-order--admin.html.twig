@@ -44,6 +44,15 @@
             </div>
           {% endif %}
         {% endfor %}
+        {% if order.balance %}
+          <div class="form-item">
+            {{ order.balance }}
+          </div>
+        {% endif %}
+        {# If the order has possible transitions, render the field for transition buttons. #}
+        {% if order_entity.getState.getTransitions is not empty %}
+          {{ order.state }}
+        {% endif %}
       </div>
       <details open class="seven-details">
         <summary role="button" class="seven-details__summary">
@@ -79,11 +88,16 @@
           </div>
         </details>
       {% endif %}
-      {# If the order has possible transitions, render the field for transition buttons. #}
-      {% if order_entity.getState.getTransitions is not empty %}
-        <div class="entity-meta__header">
-          {{ order.state }}
-        </div>
+      {% if additional_order_fields %}
+        <details open class="seven-details">
+          <summary role="button" class="seven-details__summary">
+            {{ 'Other'|t }}
+          </summary>
+          {# Show fields that are not shown elsewhere. #}
+          <div class="details-wrapper seven-details__wrapper">
+            {{ additional_order_fields }}
+          </div>
+        </details>
       {% endif %}
     </div>
   </div>

@@ -2,15 +2,15 @@
 
 namespace Drupal\commerce_store\Event;
 
+use Drupal\commerce\EventBase;
 use Drupal\commerce_store\Entity\StoreInterface;
-use Symfony\Component\EventDispatcher\Event;
 
 /**
  * Defines the store event.
  *
  * @see \Drupal\commerce_store\Event\StoreEvents
  */
-class StoreEvent extends Event {
+class StoreEvent extends EventBase {
 
   /**
    * The store.

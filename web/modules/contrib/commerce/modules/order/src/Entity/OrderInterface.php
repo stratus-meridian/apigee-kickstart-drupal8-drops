@@ -39,6 +39,24 @@ interface OrderInterface extends ContentEntityInterface, EntityAdjustableInterfa
   public function setOrderNumber($order_number);
 
   /**
+   * Gets the order version identifier.
+   *
+   * @return int
+   *   Version identifier of the order.
+   */
+  public function getVersion();
+
+  /**
+   * Sets the order version identifier.
+   *
+   * @param int $version
+   *   Version identifier of the order.
+   *
+   * @return $this
+   */
+  public function setVersion($version);
+
+  /**
    * Gets the customer user.
    *
    * @return \Drupal\user\UserInterface
